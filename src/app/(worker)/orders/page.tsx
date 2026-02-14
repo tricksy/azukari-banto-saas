@@ -1,0 +1,76 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { usePersistedState, STORAGE_KEYS } from '@/hooks/usePersistedState';
+
+type Tab = 'pending_ship' | 'rework';
+
+export default function WorkerOrdersPage() {
+  const [activeTab, setActiveTab] = usePersistedState<Tab>(
+    STORAGE_KEYS.WORKER_ORDERS_TAB,
+    'pending_ship'
+  );
+  const [items, setItems] = useState<unknown[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // TODO: Supabase APIからデータ取得
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch orders:', error);
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [activeTab]);
+
+  const tabs = [
+    { key: 'pending_ship' as Tab, label: '発送待ち' },
+    { key: 'rework' as Tab, label: '再加工' },
+  ];
+
+  return (
+    <div className="p-4 space-y-4">
+      <h2 className="text-xl font-mincho text-sumi">発注管理</h2>
+
+      {/* タブ */}
+      <div className="flex border-b border-usuzumi/20">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm border-b-2 transition-colors ${
+              activeTab === tab.key
+                ? 'border-shu text-shu'
+                : 'border-transparent text-ginnezumi hover:text-aitetsu'
+            }`}
+          >
+            {tab.label}
+            {!isLoading && (
+              <span className="ml-1 text-xs">({items.length})</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* コンテンツ */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-24 bg-shironeri animate-pulse" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-8 text-ginnezumi text-sm">
+          {activeTab === 'pending_ship' ? '発送待ちの商品はありません' : '再加工の商品はありません'}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* TODO: 商品リスト表示 */}
+        </div>
+      )}
+    </div>
+  );
+}
