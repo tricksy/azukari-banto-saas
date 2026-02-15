@@ -13,6 +13,7 @@ const navItems = [
   { href: '/admin/vendors', label: '業者管理' },
   { href: '/admin/customers', label: '顧客管理' },
   { href: '/admin/workers', label: '担当者管理' },
+  { href: '/admin/tenants', label: 'テナント管理' },
   { href: '/admin/logs', label: '操作ログ' },
   { href: '/admin/email-logs', label: 'メール送信履歴' },
   { href: '/admin/manual', label: '使い方マニュアル' },

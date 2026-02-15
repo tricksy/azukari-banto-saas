@@ -62,6 +62,17 @@
 - [ ] **SaaS版をVercelにデプロイ**（コード変更を反映）
 - [ ] **動作確認**: redirect_url が NULL のテナントで既存動作が壊れていないこと
 
+## Phase A-2: 管理画面テナント管理（コード実装済み）
+
+- [x] テナント管理API作成 (`src/app/api/admin/tenants/route.ts`) ✅ 2026-02-15
+  - GET: テナント一覧取得（RLSバイパス）
+  - PUT: redirect_url 更新（URLバリデーション付き）
+- [x] テナント管理ページ作成 (`src/app/admin/(dashboard)/tenants/page.tsx`) ✅ 2026-02-15
+  - テーブル表示（ID・店舗名・プラン・ステータス・分離状態）
+  - 編集モーダル（redirect_url 設定・クリア）
+- [x] サイドバーにナビゲーション追加 (`src/components/admin/AdminSidebar.tsx`) ✅ 2026-02-15
+- [x] typecheck・build 確認 ✅ 2026-02-15
+
 ## Phase B: 専用サーバー準備（テナント移行時に実施）
 
 ### B-1. リポジトリ準備
