@@ -60,7 +60,7 @@ export function WorkerHeader({ workerName, tenantName }: HeaderProps) {
         <div className="flex items-center gap-3">
           <Link href="/dashboard">
             <h1 className="text-lg font-mincho text-sumi hover:text-shu transition-colors cursor-pointer">
-              預かり番頭
+              預かり番頭β
             </h1>
           </Link>
           {tenantName && (

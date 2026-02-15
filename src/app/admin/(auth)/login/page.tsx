@@ -105,7 +105,7 @@ export default function AdminLoginPage() {
         style={{ borderColor: 'rgba(26, 26, 26, 0.3)' }}
       >
         <div className="card-header text-center">
-          <h1 className="text-2xl font-mincho">預かり番頭</h1>
+          <h1 className="text-2xl font-mincho">預かり番頭β</h1>
           <p className="text-sm text-aitetsu mt-1">管理者ログイン</p>
         </div>
         <div className="card-body">

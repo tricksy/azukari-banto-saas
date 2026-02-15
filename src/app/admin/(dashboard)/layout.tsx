@@ -5,7 +5,7 @@ import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { adminPath } from '@/lib/admin-path';
 
 export const metadata: Metadata = {
-  title: '預かり番頭 - 管理者',
+  title: '預かり番頭β - 管理者',
   description: '着物・帯預かり管理システム - 管理者用画面',
   robots: 'noindex, nofollow',
 };

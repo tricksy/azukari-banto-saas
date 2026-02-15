@@ -131,7 +131,7 @@ export function AdminSidebar() {
       <aside className="hidden lg:flex w-64 bg-[hsl(0,0%,12%)] text-[hsl(0,0%,65%)] flex-shrink-0 flex-col h-screen sticky top-0">
         <div className="p-4 border-b border-white/10 flex-shrink-0">
           <h1 className="text-lg font-mincho text-[hsl(43,60%,65%)]">
-            預かり番頭
+            預かり番頭β
           </h1>
           <p className="text-xs mt-1">管理者</p>
         </div>

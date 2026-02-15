@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "預かり番頭 - 着物・帯 預かり管理SaaS",
+  title: "預かり番頭β - 着物・帯 預かり管理SaaS",
   description: "着物・帯の預かり管理クラウドサービス",
   robots: {
     index: false,

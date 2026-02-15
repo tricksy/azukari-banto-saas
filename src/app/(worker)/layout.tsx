@@ -4,7 +4,7 @@ import { WorkerHeader } from '@/components/worker/Header';
 import { headers } from 'next/headers';
 
 export const metadata: Metadata = {
-  title: '預かり番頭 - 担当者',
+  title: '預かり番頭β - 担当者',
   description: '着物・帯預かり管理システム - 担当者用画面',
   robots: 'noindex, nofollow',
 };

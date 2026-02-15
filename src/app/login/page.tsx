@@ -239,7 +239,7 @@ export default function WorkerLoginPage() {
         style={{ border: '1px solid rgba(139, 35, 50, 0.5)' }}
       >
         <div className="card-header text-center">
-          <h1 className="text-2xl font-mincho">預かり番頭</h1>
+          <h1 className="text-2xl font-mincho">預かり番頭β</h1>
           {step === 'pin' && tenantName && (
             <p className="text-sm text-shu mt-1 font-mincho">{tenantName}</p>
           )}
