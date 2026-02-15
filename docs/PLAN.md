@@ -108,3 +108,53 @@ SaaS版のテナント追加手順:
 - SaaS版では多くの業務機能が未実装（ページのみ存在）のため、ドキュメントには「実装済み/TODO」を明記する
 - KURATSUGI版からの移植ではなく、SaaS版の実装に合わせた正確な記述を行う
 - 既存のdocs/sections/のHTMLと内容が矛盾しないようにする
+
+---
+
+# テナント分離移行 - 実装計画
+
+## 背景
+
+SaaS版で利用中のテナントが利用増大した場合、専用サーバー（別Supabase + 別Vercel）に移行できる仕組みを実装する。ユーザーは同じテナントIDでログインし、SaaS側が専用サーバーへ透過的にリダイレクトする。
+
+詳細設計: [plans/2026-02-15-tenant-separation-design.md](plans/2026-02-15-tenant-separation-design.md)
+
+## 実装ステップ（SaaS側）
+
+### Step 1: DBマイグレーション
+
+`tenants` テーブルに `redirect_url` カラムを追加する。
+
+- ファイル: `supabase/migrations/20260215000001_add_redirect_url.sql`
+- 内容: `ALTER TABLE tenants ADD COLUMN redirect_url TEXT DEFAULT NULL;`
+- 本番Supabaseにも適用
+
+### Step 2: `/api/tenant` レスポンス変更
+
+テナント情報APIのレスポンスに `redirect_url` を含める。
+
+- ファイル: `src/app/api/tenant/route.ts`
+- 変更: `select` に `redirect_url` を追加
+- 変更前: `.select('slug, name, status')`
+- 変更後: `.select('slug, name, status, redirect_url')`
+
+### Step 3: ログイン画面のリダイレクト処理
+
+テナントIDを入力後、`redirect_url` がある場合は専用サーバーへリダイレクトする。
+
+- ファイル: `src/app/login/page.tsx`
+- 変更箇所: `handleTenantSubmit` 関数内
+- ロジック:
+  1. `/api/tenant` のレスポンスに `redirect_url` がある場合
+  2. `window.location.href = ${redirect_url}/login?tenant=${tenantId}` でリダイレクト
+  3. `redirect_url` がない場合は現行どおりPIN入力ステップへ
+
+### Step 4: ビルド・型チェック確認
+
+- `yarn typecheck` が成功すること
+- `yarn build` が成功すること
+
+### Step 5: 動作確認
+
+- redirect_url が NULL のテナント → SaaS内でPIN認証（既存動作）
+- redirect_url が設定されたテナント → 専用サーバーへリダイレクト

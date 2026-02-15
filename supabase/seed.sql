@@ -4,8 +4,8 @@
 
 -- テスト用テナント
 INSERT INTO tenants (id, slug, name, plan, status) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'demo-kimono', 'デモ着物店', 'free', 'active'),
-  ('a0000000-0000-0000-0000-000000000002', 'test-gofuku', 'テスト呉服店', 'standard', 'active');
+  ('a0000000-0000-0000-0000-000000000001', 'A3F0', 'デモ着物店', 'free', 'active'),
+  ('a0000000-0000-0000-0000-000000000002', 'B1C2', 'テスト呉服店', 'standard', 'active');
 
 -- プラットフォーム管理者
 INSERT INTO platform_admins (email, name) VALUES

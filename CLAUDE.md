@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **預かり番頭 SaaS — 着物・帯預かり管理 マルチテナントクラウドシステム**
 
-着物店・呉服店向けに、預かった着物・帯の写真撮影、ステータス管理、返却期日のアラートを一元管理するマルチテナントSaaS。各店舗がサブドメイン（`{slug}.kuratsugi.app`）でアクセスし、データはPostgreSQL RLSで完全分離される。
+着物店・呉服店向けに、預かった着物・帯の写真撮影、ステータス管理、返却期日のアラートを一元管理するマルチテナントSaaS。各店舗はテナントID（4桁16進数コード）でログインし、データはPostgreSQL RLSで完全分離される。
 
 **単体版（KURATSUGI）との関係:** KURATSUGIは1店舗専用（Google Spreadsheet + Vercel）。本リポジトリはそれを複数店舗対応のSaaSとして新規開発したもの。
 
@@ -76,9 +76,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | 項目 | 仕様 |
 | ---- | ---- |
-| テナント識別 | サブドメイン（`{slug}.kuratsugi.app`） |
+| テナント識別 | テナントID（4桁16進数: 0-9, A-F） |
+| ログインフロー | テナントID入力 → 店舗名表示 → PIN入力 |
 | データ分離 | PostgreSQL RLS（`tenant_id` カラム） |
-| 開発環境テナント指定 | `?tenant=demo` クエリパラメータ or `x-tenant-slug` ヘッダー |
+| テナントAPI | `GET /api/tenant?slug={テナントID}` で店舗名取得 |
+
+### テナントID一覧（開発用）
+
+| テナントID | 店舗名 |
+| ---------- | ------ |
+| `A3F0` | デモ着物店 |
+| `B1C2` | テスト呉服店 |
+| `D7E1` | 柴犬屋 |
 
 ### ステータス一覧
 

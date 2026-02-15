@@ -40,3 +40,95 @@
 | Phase 3: 機能仕様 | 6 | 6 | 100% |
 | Phase 4: 運用 | 1 | 1 | 100% |
 | **合計** | **13** | **13** | **100%** |
+
+---
+
+# テナント分離移行 - 進捗管理
+
+設計書: [plans/2026-02-15-tenant-separation-design.md](plans/2026-02-15-tenant-separation-design.md)
+
+## Phase A: SaaS側の変更（コード実装済み）
+
+- [x] マイグレーションSQL作成 (`supabase/migrations/20260215000001_add_redirect_url.sql`)
+- [x] `/api/tenant` レスポンスに `redirect_url` 追加 (`src/app/api/tenant/route.ts`)
+- [x] ログイン画面のリダイレクト処理 (`src/app/login/page.tsx`)
+- [x] typecheck・build 確認
+
+### 残作業（手動）
+
+- [ ] **本番Supabaseに `redirect_url` カラム追加**
+  - URL: https://supabase.com/dashboard/project/slfsupdgapacwobavvdd/sql
+  - 実行SQL: `ALTER TABLE tenants ADD COLUMN redirect_url TEXT DEFAULT NULL;`
+- [ ] **SaaS版をVercelにデプロイ**（コード変更を反映）
+- [ ] **動作確認**: redirect_url が NULL のテナントで既存動作が壊れていないこと
+
+## Phase B: 専用サーバー準備（テナント移行時に実施）
+
+### B-1. リポジトリ準備
+
+- [ ] azukari-banto-saas をフォークして別リポジトリ作成
+- [ ] 環境変数 `FIXED_TENANT_SLUG` を追加（`.env.example` に記載）
+- [ ] ログイン画面を変更:
+  - `?tenant=XXXX` クエリパラメータがあればそのslugを使用
+  - なければ `FIXED_TENANT_SLUG` 環境変数を使用
+  - テナントID入力ステップを省略し、PIN入力画面のみ表示
+  - 店舗名は `/api/tenant` から取得して固定表示
+
+### B-2. 専用Supabase準備
+
+- [ ] Supabaseで新規プロジェクト作成
+- [ ] マイグレーション適用（`supabase/migrations/` の全ファイル）
+- [ ] 環境変数を設定:
+  - `NEXT_PUBLIC_SUPABASE_URL` → 専用プロジェクトのURL
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → 専用プロジェクトのanon key
+  - `SUPABASE_SERVICE_ROLE_KEY` → 専用プロジェクトのservice role key
+  - `AUTH_SECRET` → 新しいシークレットを生成
+  - `FIXED_TENANT_SLUG` → 移行するテナントのID（例: `D7E1`）
+
+### B-3. データ移行
+
+- [ ] SaaS側Supabaseから対象テナントのデータをエクスポート:
+  ```
+  対象テーブル（順序重要、外部キー依存順）:
+  1. tenants（対象テナント1件）
+  2. workers
+  3. partners
+  4. customers
+  5. vendors
+  6. receptions
+  7. items
+  8. claims
+  9. claim_logs
+  10. operation_logs
+  11. tenant_settings
+  ```
+- [ ] 専用側Supabaseにインポート
+- [ ] データ整合性を確認（件数照合）
+
+### B-4. 専用サーバーデプロイ
+
+- [ ] Vercelで新規プロジェクト作成
+- [ ] フォーク版リポジトリを接続
+- [ ] 環境変数を設定（B-2で準備した値）
+- [ ] デプロイ実行
+- [ ] 動作確認:
+  - ログイン画面にPIN入力が表示される
+  - PIN入力でログインできる
+  - ダッシュボード・一覧画面でデータが表示される
+
+### B-5. 切り替え（ゼロダウンタイム）
+
+- [ ] SaaS側のSupabaseで対象テナントの `redirect_url` を設定:
+  ```sql
+  UPDATE tenants SET redirect_url = 'https://専用サーバーURL'
+  WHERE slug = '対象テナントID';
+  ```
+- [ ] 切り替え確認:
+  - SaaS側でテナントIDを入力 → 専用サーバーにリダイレクトされる
+  - 専用サーバーでPIN入力 → ログイン成功
+  - remember tokenで自動ログインが専用サーバーで動作する
+
+### B-6. 後処理（任意）
+
+- [ ] SaaS側の旧データ削除 or アーカイブ（一定期間後）
+- [ ] データ移行スクリプトの汎用化（次回以降の移行用）

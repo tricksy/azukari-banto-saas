@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const { data: tenant, error } = await supabase
     .from('tenants')
-    .select('slug, name, status')
+    .select('slug, name, status, redirect_url')
     .eq('slug', slug)
     .single();
 
