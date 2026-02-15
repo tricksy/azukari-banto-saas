@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { adminPath } from '@/lib/admin-path';
 
 export const metadata: Metadata = {
   title: '預かり番頭 - 管理者',
@@ -17,7 +18,7 @@ export default async function AdminDashboardLayout({
   const session = await getSession();
 
   if (!session || session.role !== 'admin') {
-    redirect('/admin/login');
+    redirect(adminPath('/login'));
   }
 
   return (

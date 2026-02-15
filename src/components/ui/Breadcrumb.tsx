@@ -8,6 +8,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isAdminPath, adminPath, getAdminPrefix } from '@/lib/admin-path';
 
 interface BreadcrumbItem {
   /** 表示名 */
@@ -62,8 +63,8 @@ function generateBreadcrumbFromPath(pathname: string, isAdmin: boolean): Breadcr
     const segment = segments[i];
 
     // adminプレフィックスはスキップ
-    if (segment === 'admin') {
-      currentPath += '/admin';
+    if (segment === getAdminPrefix()) {
+      currentPath += `/${getAdminPrefix()}`;
       continue;
     }
 
@@ -112,13 +113,13 @@ export function Breadcrumb({
   homeLabel = 'ホーム',
 }: BreadcrumbProps) {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith('/admin');
+  const isAdmin = isAdminPath(pathname);
 
   // 自動生成または指定されたアイテムを使用
   const breadcrumbItems = items ?? generateBreadcrumbFromPath(pathname, isAdmin);
 
   // ホームリンクのデフォルト設定
-  const resolvedHomeHref = homeHref ?? (isAdmin ? '/admin/dashboard' : '/dashboard');
+  const resolvedHomeHref = homeHref ?? (isAdmin ? adminPath('/dashboard') : '/dashboard');
 
   // アイテムがない場合は表示しない
   if (breadcrumbItems.length === 0) return null;

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { adminPath } from '@/lib/admin-path';
 
 const icons = {
   shield: (className: string) => (
@@ -58,7 +59,7 @@ export default function AdminManualPage() {
   return (
     <div className="p-6 pb-8 max-w-4xl">
       <div className="mb-6">
-        <Link href="/admin/dashboard" className="text-sm text-shu hover:underline mb-2 inline-block">
+        <Link href={adminPath('/dashboard')} className="text-sm text-shu hover:underline mb-2 inline-block">
           &larr; ダッシュボードに戻る
         </Link>
         <h1 className="text-2xl font-mincho text-sumi">管理者マニュアル</h1>

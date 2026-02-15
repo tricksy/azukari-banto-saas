@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Script from 'next/script';
+import { adminPath } from '@/lib/admin-path';
 
 declare global {
   interface Window {
@@ -61,7 +62,7 @@ export default function AdminLoginPage() {
           return;
         }
 
-        router.push('/admin/dashboard');
+        router.push(adminPath('/dashboard'));
       } catch {
         setError('ログイン処理でエラーが発生しました');
       } finally {

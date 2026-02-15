@@ -2,19 +2,18 @@
  * 認証ミドルウェア（マルチテナント対応）
  *
  * 1. テナント解決（サブドメイン or ヘッダー）
- * 2. 認証ガード（JWT署名検証）
- * 3. テナント情報をリクエストヘッダーに付与
- * 4. admin/workerルート分離
+ * 2. 管理者URL難読化（プレフィックス書き換え）
+ * 3. 認証ガード（JWT署名検証）
+ * 4. テナント情報をリクエストヘッダーに付与
+ * 5. admin/workerルート分離
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { adminPath, getAdminPrefix, isAdminPath } from '@/lib/admin-path';
 
 const SESSION_COOKIE_NAME = 'kuratsugi_session';
-
-// 認証不要のパス
-const PUBLIC_PATHS = ['/login', '/admin/login', '/api/auth/', '/api/tenant'];
 
 /**
  * テナントslugをリクエストから解決
@@ -72,8 +71,33 @@ export async function middleware(request: NextRequest) {
   // テナントslugを解決
   const tenantSlug = resolveTenantSlug(request);
 
+  const prefix = getAdminPrefix();
+
+  // 直接 /admin/* アクセスをブロック（prefix が 'admin' 以外の場合）
+  if (prefix !== 'admin' && (pathname === '/admin' || pathname.startsWith('/admin/'))) {
+    return new NextResponse('Not Found', { status: 404 });
+  }
+
+  // プレフィックス付きURLを /admin/* に正規化
+  let normalizedPathname = pathname;
+  let needsRewrite = false;
+  if (prefix !== 'admin' && isAdminPath(pathname)) {
+    normalizedPathname = '/admin' + pathname.slice(`/${prefix}`.length);
+    needsRewrite = true;
+  }
+
+  // 認証不要のパス
+  const publicPaths = ['/login', adminPath('/login'), '/api/auth/', '/api/tenant'];
+
   // 公開パスはテナント情報のみ付与して通過
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
+  if (publicPaths.some((path) => pathname.startsWith(path))) {
+    if (needsRewrite) {
+      const url = request.nextUrl.clone();
+      url.pathname = normalizedPathname;
+      const response = NextResponse.rewrite(url);
+      response.headers.set('x-pathname', normalizedPathname);
+      return response;
+    }
     const response = NextResponse.next();
     if (tenantSlug) {
       response.headers.set('x-tenant-slug', tenantSlug);
@@ -85,24 +109,32 @@ export async function middleware(request: NextRequest) {
   const session = request.cookies.get(SESSION_COOKIE_NAME);
 
   // --- 管理者ルート ---
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+  if (normalizedPathname.startsWith('/admin') || normalizedPathname.startsWith('/api/admin')) {
     if (!session?.value) {
-      if (pathname.startsWith('/api/')) {
+      if (normalizedPathname.startsWith('/api/')) {
         return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
       }
-      return NextResponse.redirect(new URL('/admin/login', request.url));
+      return NextResponse.redirect(new URL(adminPath('/login'), request.url));
     }
 
     const result = await verifySession(session.value);
     if (!result.valid || result.role !== 'admin') {
-      if (pathname.startsWith('/api/')) {
+      if (normalizedPathname.startsWith('/api/')) {
         return NextResponse.json({ error: '管理者権限が必要です' }, { status: 403 });
       }
-      return NextResponse.redirect(new URL('/admin/login', request.url));
+      return NextResponse.redirect(new URL(adminPath('/login'), request.url));
+    }
+
+    if (needsRewrite) {
+      const url = request.nextUrl.clone();
+      url.pathname = normalizedPathname;
+      const response = NextResponse.rewrite(url);
+      response.headers.set('x-pathname', normalizedPathname);
+      return response;
     }
 
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-pathname', pathname);
+    requestHeaders.set('x-pathname', normalizedPathname);
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -151,7 +183,7 @@ export async function middleware(request: NextRequest) {
 
   // adminセッションでworkerページへのアクセスを防止
   if (result.role === 'admin') {
-    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    return NextResponse.redirect(new URL(adminPath('/dashboard'), request.url));
   }
 
   // テナント情報をリクエストヘッダーに付与

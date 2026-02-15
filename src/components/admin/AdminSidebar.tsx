@@ -3,21 +3,22 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { adminPath } from '@/lib/admin-path';
 
 const navItems = [
-  { href: '/admin/dashboard', label: 'ダッシュボード' },
-  { href: '/admin/statuses', label: 'ステータス一覧' },
-  { href: '/admin/claims', label: 'クレーム管理' },
-  { href: '/admin/paid-storage', label: '有料預かり管理' },
-  { href: '/admin/partners', label: '取引先管理' },
-  { href: '/admin/vendors', label: '業者管理' },
-  { href: '/admin/customers', label: '顧客管理' },
-  { href: '/admin/workers', label: '担当者管理' },
-  { href: '/admin/tenants', label: 'テナント管理' },
-  { href: '/admin/logs', label: '操作ログ' },
-  { href: '/admin/email-logs', label: 'メール送信履歴' },
-  { href: '/admin/manual', label: '使い方マニュアル' },
-  { href: '/admin/settings', label: 'システム設定' },
+  { href: adminPath('/dashboard'), label: 'ダッシュボード' },
+  { href: adminPath('/statuses'), label: 'ステータス一覧' },
+  { href: adminPath('/claims'), label: 'クレーム管理' },
+  { href: adminPath('/paid-storage'), label: '有料預かり管理' },
+  { href: adminPath('/partners'), label: '取引先管理' },
+  { href: adminPath('/vendors'), label: '業者管理' },
+  { href: adminPath('/customers'), label: '顧客管理' },
+  { href: adminPath('/workers'), label: '担当者管理' },
+  { href: adminPath('/tenants'), label: 'テナント管理' },
+  { href: adminPath('/logs'), label: '操作ログ' },
+  { href: adminPath('/email-logs'), label: 'メール送信履歴' },
+  { href: adminPath('/manual'), label: '使い方マニュアル' },
+  { href: adminPath('/settings'), label: 'システム設定' },
 ];
 
 export function AdminSidebar() {
@@ -42,7 +43,7 @@ export function AdminSidebar() {
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/admin/login');
+    router.push(adminPath('/login'));
   };
 
   const navContent = (
@@ -98,7 +99,7 @@ export function AdminSidebar() {
             )}
           </button>
 
-          <Link href="/admin/dashboard">
+          <Link href={adminPath('/dashboard')}>
             <h1 className="text-lg font-mincho text-[hsl(43,60%,65%)] hover:text-[hsl(43,60%,75%)] transition-colors">
               預かり番頭
             </h1>
