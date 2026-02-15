@@ -19,6 +19,11 @@ export default function AdminTenantsPage() {
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [editUrl, setEditUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newSlug, setNewSlug] = useState('');
+  const [newPlan, setNewPlan] = useState<'free' | 'standard' | 'premium'>('free');
+  const [createError, setCreateError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,6 +82,41 @@ export default function AdminTenantsPage() {
     }
   };
 
+  const handleCreateOpen = () => {
+    setIsCreateOpen(true);
+    setNewName('');
+    setNewSlug('');
+    setNewPlan('free');
+    setCreateError('');
+  };
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !newSlug.trim()) {
+      setCreateError('店舗名とテナントIDは必須です');
+      return;
+    }
+    setIsSaving(true);
+    setCreateError('');
+    try {
+      const res = await fetch('/api/admin/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim(), slug: newSlug.trim(), plan: newPlan }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCreateError(data.error || '作成に失敗しました');
+        return;
+      }
+      setTenants((prev) => [...prev, data.tenant]);
+      setIsCreateOpen(false);
+    } catch {
+      setCreateError('通信エラーが発生しました');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getStatusBadge = (status: Tenant['status']) => {
     const styles: Record<Tenant['status'], string> = {
       active: 'bg-green-100 text-green-700',
@@ -101,6 +141,9 @@ export default function AdminTenantsPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-mincho text-sumi">テナント管理</h2>
+        <button className="btn-primary text-sm" onClick={handleCreateOpen}>
+          + 新規テナント
+        </button>
       </div>
 
       <div className="card">
@@ -249,6 +292,67 @@ export default function AdminTenantsPage() {
             </div>
           </div>
         )}
+      </Modal>
+      <Modal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        title="新規テナント作成"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm text-aitetsu mb-1">店舗名 *</label>
+            <input
+              type="text"
+              className="input w-full"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="例: 京都きもの屋"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-aitetsu mb-1">テナントID *</label>
+            <input
+              type="text"
+              className="input w-full font-mono tracking-widest"
+              value={newSlug}
+              onChange={(e) => setNewSlug(e.target.value.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 4))}
+              placeholder="例: A3F0"
+              maxLength={4}
+            />
+            <p className="text-xs text-ginnezumi mt-1">4桁の16進数（0-9, A-F）</p>
+          </div>
+          <div>
+            <label className="block text-sm text-aitetsu mb-1">プラン</label>
+            <select
+              className="input w-full"
+              value={newPlan}
+              onChange={(e) => setNewPlan(e.target.value as 'free' | 'standard' | 'premium')}
+            >
+              <option value="free">free</option>
+              <option value="standard">standard</option>
+              <option value="premium">premium</option>
+            </select>
+          </div>
+          {createError && (
+            <p className="text-kokiake text-sm">{createError}</p>
+          )}
+          <div className="flex gap-3 justify-end pt-2">
+            <button
+              className="btn-secondary"
+              onClick={() => setIsCreateOpen(false)}
+              disabled={isSaving}
+            >
+              キャンセル
+            </button>
+            <button
+              className="btn-primary"
+              onClick={handleCreate}
+              disabled={isSaving || newSlug.length !== 4 || !newName.trim()}
+            >
+              {isSaving ? '作成中...' : '作成'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

@@ -24,6 +24,67 @@ export async function GET() {
 }
 
 /**
+ * テナント新規作成（管理者API）
+ * POST /api/admin/tenants
+ * Body: { name: string, slug: string, plan?: string }
+ */
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const { name, slug, plan } = body;
+
+  if (!name || !slug) {
+    return NextResponse.json(
+      { error: '店舗名とテナントIDは必須です' },
+      { status: 400 }
+    );
+  }
+
+  // slug: 4桁16進数（大文字）
+  const normalizedSlug = slug.toUpperCase();
+  if (!/^[0-9A-F]{4}$/.test(normalizedSlug)) {
+    return NextResponse.json(
+      { error: 'テナントIDは4桁の16進数（0-9, A-F）で入力してください' },
+      { status: 400 }
+    );
+  }
+
+  const supabase = createServiceClient();
+
+  // 重複チェック
+  const { data: existing } = await supabase
+    .from('tenants')
+    .select('id')
+    .eq('slug', normalizedSlug)
+    .single();
+
+  if (existing) {
+    return NextResponse.json(
+      { error: 'このテナントIDは既に使用されています' },
+      { status: 409 }
+    );
+  }
+
+  const { data: tenant, error } = await supabase
+    .from('tenants')
+    .insert({
+      name,
+      slug: normalizedSlug,
+      plan: plan || 'free',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json(
+      { error: 'テナントの作成に失敗しました' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ success: true, tenant }, { status: 201 });
+}
+
+/**
  * テナントの redirect_url 更新（管理者API）
  * PUT /api/admin/tenants
  * Body: { id: string, redirect_url: string | null }
