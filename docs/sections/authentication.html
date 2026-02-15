@@ -1,0 +1,182 @@
+      <section id="auth-overview">
+        <h2>認証システム概要</h2>
+
+        <p>預かり番頭 SaaS は3層の認証体系を採用しています。全ての認証はテナントコンテキスト（tenant_id）を含む JWT セッションにより管理されます。</p>
+
+        <h3>認証方式比較</h3>
+        <table>
+          <tr><th>項目</th><th>担当者（Worker）</th><th>管理者（Admin）</th><th>プラットフォーム管理者</th></tr>
+          <tr><td>認証方式</td><td>PINコード（8桁数字）</td><td>メール / OAuth</td><td>メール認証</td></tr>
+          <tr><td>PIN保管</td><td>bcrypt ハッシュ化</td><td>-</td><td>-</td></tr>
+          <tr><td>セッション</td><td>JWT Cookie（8時間）</td><td>JWT Cookie（8時間）</td><td>JWT Cookie</td></tr>
+          <tr><td>記憶機能</td><td>Remember Token（30日）</td><td>-</td><td>-</td></tr>
+          <tr><td>テナント範囲</td><td>所属テナントのみ</td><td>所属テナントのみ</td><td>全テナント横断</td></tr>
+          <tr><td>管理テーブル</td><td><code>workers</code></td><td><code>workers</code>（role: admin）</td><td><code>platform_admins</code></td></tr>
+          <tr><td>ログイン制限</td><td>5回失敗で5分ロック</td><td>同左</td><td>同左</td></tr>
+        </table>
+
+        <h3>セキュリティ対策</h3>
+        <table>
+          <tr><th>脅威</th><th>対策</th><th>実装箇所</th></tr>
+          <tr><td>ブルートフォース</td><td>IP ベースのレート制限（5回/15分）</td><td><code>src/lib/rate-limit.ts</code></td></tr>
+          <tr><td>PIN 漏洩</td><td>bcryptjs によるハッシュ化保存</td><td><code>src/app/api/auth/worker/route.ts</code></td></tr>
+          <tr><td>セッション改ざん</td><td>JWT HS256 署名検証</td><td><code>src/lib/auth.ts</code></td></tr>
+          <tr><td>XSS によるCookie窃取</td><td>httpOnly + secure + sameSite=strict</td><td><code>src/lib/auth.ts</code></td></tr>
+          <tr><td>テナント間データ漏洩</td><td>PostgreSQL RLS + tenant_id フィルタ</td><td><code>supabase/migrations/</code></td></tr>
+          <tr><td>セッション有効期限切れ</td><td>JWT exp クレーム（8時間）</td><td><code>src/lib/auth.ts</code></td></tr>
+          <tr><td>記憶トークン改ざん</td><td>HMAC-SHA256 署名検証</td><td><code>src/lib/auth.ts</code></td></tr>
+        </table>
+      </section>
+
+      <section id="auth-flow">
+        <h2>認証フロー</h2>
+
+        <h3>担当者 PIN 認証フロー</h3>
+        <pre><code>
+  [ブラウザ]                    [API]                         [Supabase]
+      |                          |                               |
+      |  POST /api/auth/worker   |                               |
+      |  {pin, tenantSlug}       |                               |
+      |------------------------->|                               |
+      |                          |                               |
+      |                    [1] レート制限チェック                  |
+      |                    (IP ベース, 5回/15分)                  |
+      |                          |                               |
+      |                    [2] PIN バリデーション                  |
+      |                    (8桁数字チェック)                      |
+      |                          |                               |
+      |                          |  SELECT * FROM tenants        |
+      |                          |  WHERE slug = 'demo-kimono'   |
+      |                          |------------------------------>|
+      |                          |  {id, name, status}           |
+      |                          |<------------------------------|
+      |                          |                               |
+      |                    [3] テナント status = 'active' チェック |
+      |                          |                               |
+      |                          |  SELECT * FROM workers        |
+      |                          |  WHERE tenant_id = ? AND      |
+      |                          |        is_active = true       |
+      |                          |------------------------------>|
+      |                          |  [{worker_id, pin_hash, ...}] |
+      |                          |<------------------------------|
+      |                          |                               |
+      |                    [4] bcrypt.compare(pin, pin_hash)     |
+      |                    (全担当者をループで照合)                |
+      |                          |                               |
+      |                    [5] JWT セッション作成                  |
+      |                    payload: {                             |
+      |                      workerId, name, role,               |
+      |                      tenantId, tenantSlug,               |
+      |                      loginAt                             |
+      |                    }                                     |
+      |                          |                               |
+      |                    [6] Remember Token 生成               |
+      |                    (HMAC-SHA256 署名付き)                 |
+      |                          |                               |
+      |  Set-Cookie:             |                               |
+      |  kuratsugi_session=JWT   |                               |
+      |  200 {success, worker,   |                               |
+      |       rememberToken}     |                               |
+      |<-------------------------|                               |
+        </code></pre>
+
+        <h3>JWT セッションペイロード</h3>
+        <pre><code>
+{
+  "workerId": "T01",
+  "name": "田中太郎",
+  "role": "worker",          // "worker" | "admin"
+  "tenantId": "a0000000-...", // UUID
+  "tenantSlug": "demo-kimono",
+  "loginAt": "2026-02-14T10:00:00.000Z",
+  "iat": 1739523600,         // issued at
+  "exp": 1739552400          // 8時間後
+}
+        </code></pre>
+
+        <h3>記憶トークン（Remember Me）</h3>
+        <table>
+          <tr><th>項目</th><th>仕様</th></tr>
+          <tr><td>有効期間</td><td>30日間</td></tr>
+          <tr><td>形式</td><td><code>{base64url_payload}.{hmac_signature}</code></td></tr>
+          <tr><td>署名アルゴリズム</td><td>HMAC-SHA256</td></tr>
+          <tr><td>ペイロード</td><td>workerId, name, tenantId, tenantSlug, createdAt</td></tr>
+          <tr><td>用途</td><td>セッション切れ時の自動再ログイン（PIN 入力不要）</td></tr>
+          <tr><td>検証</td><td>署名一致 + 有効期限チェック</td></tr>
+        </table>
+      </section>
+
+      <section id="auth-middleware">
+        <h2>ミドルウェア認証フロー</h2>
+
+        <h3>処理フロー</h3>
+        <pre><code>
+  全リクエスト
+       |
+       v
+  [1] テナント slug 解決
+       |
+       +-- 本番: host から抽出
+       |   demo-kimono.kuratsugi.app → "demo-kimono"
+       |
+       +-- 開発: x-tenant-slug ヘッダー
+       |
+       v
+  [2] パスチェック
+       |
+       +-- PUBLIC_PATHS (/login, /api/auth/*, /api/tenant)
+       |   → テナント情報のみ付与して通過
+       |
+       +-- /api/* パス
+       |   → Cookie から JWT 検証
+       |   → 失敗: 401 JSON レスポンス
+       |
+       +-- ページパス
+           → Cookie から JWT 検証
+           → 失敗: /login へリダイレクト
+           → 成功: ヘッダー付与して通過
+        </code></pre>
+
+        <h3>公開パス一覧</h3>
+        <table>
+          <tr><th>パス</th><th>説明</th></tr>
+          <tr><td><code>/login</code></td><td>ログインページ</td></tr>
+          <tr><td><code>/api/auth/*</code></td><td>認証 API（ログイン・ログアウト）</td></tr>
+          <tr><td><code>/api/tenant</code></td><td>テナント情報取得（ログイン画面で使用）</td></tr>
+        </table>
+
+        <h3>Middleware マッチャー設定</h3>
+        <pre><code>
+export const config = {
+  matcher: [
+    // 静的ファイルを除外
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};
+        </code></pre>
+
+        <h3>RLS との統合</h3>
+        <p>API Route では、認証済みセッションから取得した <code>tenantId</code> を Supabase のセッション変数 <code>app.tenant_id</code> に設定します。これにより RLS ポリシーがテナント単位のフィルタリングを自動的に適用します。</p>
+
+        <pre><code>
+// サーバーサイドでのテナント設定
+const supabase = createServiceClient();
+
+// Service Role はRLSをバイパスするが、
+// テナント指定でのクエリを行う場合:
+const { data } = await supabase
+  .from('items')
+  .select('*')
+  .eq('tenant_id', session.tenantId);
+        </code></pre>
+
+        <h3>レート制限の詳細</h3>
+        <table>
+          <tr><th>パラメータ</th><th>値</th><th>説明</th></tr>
+          <tr><td>MAX_ATTEMPTS</td><td>5</td><td>最大試行回数</td></tr>
+          <tr><td>LOCK_DURATION</td><td>5分</td><td>ロック期間</td></tr>
+          <tr><td>ATTEMPT_WINDOW</td><td>15分</td><td>試行カウントのウィンドウ</td></tr>
+          <tr><td>識別子</td><td>クライアント IP</td><td>x-forwarded-for / x-real-ip</td></tr>
+          <tr><td>クリーンアップ</td><td>10% 確率</td><td>リクエストごとに確率的にクリーンアップ</td></tr>
+        </table>
+      </section>

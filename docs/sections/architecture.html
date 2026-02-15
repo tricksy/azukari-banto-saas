@@ -1,0 +1,231 @@
+      <section id="system">
+        <h2>システムアーキテクチャ</h2>
+
+        <h3>全体構成図</h3>
+        <pre><code>
+  +--------------------------+
+  |       クライアント        |
+  |  {slug}.kuratsugi.app    |
+  +-----------+--------------+
+              |
+              | HTTPS
+              v
+  +-----------+--------------+
+  |        Vercel            |
+  |  +--------------------+  |
+  |  | Next.js 16         |  |
+  |  | App Router         |  |
+  |  |                    |  |
+  |  | +----------------+ |  |
+  |  | | Middleware      | |  |
+  |  | | - テナント解決  | |  |
+  |  | | - JWT検証       | |  |
+  |  | +----------------+ |  |
+  |  |                    |  |
+  |  | +----------------+ |  |
+  |  | | API Routes     | |  |
+  |  | | /api/auth/*    | |  |
+  |  | | /api/items/*   | |  |
+  |  | | /api/tenant    | |  |
+  |  | +----------------+ |  |
+  |  +--------------------+  |
+  +-----------+--------------+
+              |
+              | Service Role / Anon Key
+              v
+  +-----------+--------------+
+  |     Supabase Cloud       |
+  |  +--------------------+  |
+  |  | PostgreSQL         |  |
+  |  | +----------------+ |  |
+  |  | | RLS Policies   | |  |
+  |  | | tenant_id =    | |  |
+  |  | | app.tenant_id  | |  |
+  |  | +----------------+ |  |
+  |  |                    |  |
+  |  | Tables:            |  |
+  |  |  tenants           |  |
+  |  |  workers           |  |
+  |  |  items             |  |
+  |  |  receptions        |  |
+  |  |  customers         |  |
+  |  |  partners          |  |
+  |  |  vendors           |  |
+  |  |  claims            |  |
+  |  |  operation_logs    |  |
+  |  +--------------------+  |
+  +--------------------------+
+        </code></pre>
+
+        <h3>マルチテナント方式</h3>
+        <table>
+          <tr><th>方式</th><th>説明</th></tr>
+          <tr><td>テナント識別</td><td>サブドメイン方式: <code>{slug}.kuratsugi.app</code></td></tr>
+          <tr><td>データ分離</td><td>共有スキーマ + RLS（Row Level Security）</td></tr>
+          <tr><td>テナントID</td><td>UUID。全業務テーブルに <code>tenant_id</code> カラム</td></tr>
+          <tr><td>開発環境</td><td><code>x-tenant-slug</code> ヘッダーでテナント指定</td></tr>
+        </table>
+
+        <h3>リクエスト処理フロー</h3>
+        <pre><code>
+  Browser Request
+       |
+       v
+  [1] DNS: demo-kimono.kuratsugi.app
+       |
+       v
+  [2] Vercel Edge Network
+       |
+       v
+  [3] Next.js Middleware (middleware.ts)
+       |
+       +-- テナント解決: host から slug を抽出
+       |     demo-kimono.kuratsugi.app → "demo-kimono"
+       |
+       +-- 認証チェック:
+       |     - PUBLIC_PATHS → 通過
+       |     - Cookie: kuratsugi_session → JWT 検証
+       |     - 失敗 → /login へリダイレクト
+       |
+       +-- ヘッダー付与:
+       |     x-tenant-slug: demo-kimono
+       |     x-pathname: /dashboard
+       |
+       v
+  [4] Page / API Route
+       |
+       v
+  [5] Supabase Client (Service Role)
+       |
+       +-- SET app.tenant_id = '{tenant_uuid}'
+       |
+       +-- RLS が tenant_id でフィルタ
+       |
+       v
+  [6] Response
+        </code></pre>
+      </section>
+
+      <section id="directory-structure">
+        <h2>ディレクトリ構成</h2>
+
+        <pre><code>
+azukari-banto-saas/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx                 # ルートレイアウト
+│   │   ├── page.tsx                   # ルートページ（リダイレクト）
+│   │   ├── globals.css                # 侘寂デザインシステム（Tailwind v4）
+│   │   │
+│   │   ├── login/
+│   │   │   └── page.tsx               # テナント選択 → PINログイン
+│   │   │
+│   │   ├── (worker)/                  # 担当者用画面（PIN認証）
+│   │   │   ├── layout.tsx             # ヘッダー付きレイアウト
+│   │   │   ├── dashboard/page.tsx     # ダッシュボード
+│   │   │   ├── reception/page.tsx     # 預かり登録（ウィザード形式）
+│   │   │   ├── items/page.tsx         # 商品一覧
+│   │   │   ├── orders/page.tsx        # 発注管理
+│   │   │   ├── returns/page.tsx       # 業者からの返却受入
+│   │   │   ├── shipping/page.tsx      # 顧客への返送
+│   │   │   ├── paid-storage/page.tsx  # 有料預かり管理
+│   │   │   └── manual/page.tsx        # 使い方マニュアル
+│   │   │
+│   │   ├── admin/                     # 管理者用画面
+│   │   │   ├── (auth)/                # 認証グループ（サイドバーなし）
+│   │   │   │   └── login/page.tsx     # 管理者ログイン
+│   │   │   └── (dashboard)/           # ダッシュボードグループ
+│   │   │       ├── layout.tsx         # サイドバー付きレイアウト
+│   │   │       ├── dashboard/page.tsx # ダッシュボード
+│   │   │       ├── items/page.tsx     # 商品一覧・詳細
+│   │   │       ├── statuses/page.tsx  # ステータス一覧
+│   │   │       ├── partners/page.tsx  # 取引先管理
+│   │   │       ├── vendors/page.tsx   # 業者管理
+│   │   │       ├── customers/page.tsx # 顧客管理
+│   │   │       ├── workers/page.tsx   # 担当者管理
+│   │   │       ├── paid-storage/      # 有料預かり管理
+│   │   │       ├── claims/page.tsx    # クレーム管理
+│   │   │       ├── logs/page.tsx      # 操作ログ
+│   │   │       ├── email-logs/        # メール送信ログ
+│   │   │       ├── settings/page.tsx  # システム設定
+│   │   │       └── manual/page.tsx    # 使い方マニュアル
+│   │   │
+│   │   └── api/                       # API Routes
+│   │       ├── auth/
+│   │       │   ├── worker/route.ts    # PINコード認証
+│   │       │   ├── worker/remember/   # 記憶トークン
+│   │       │   └── logout/route.ts    # ログアウト
+│   │       └── tenant/route.ts        # テナント情報取得
+│   │
+│   ├── components/
+│   │   ├── ui/                        # 共通UIコンポーネント
+│   │   │   ├── Badge.tsx
+│   │   │   ├── Breadcrumb.tsx
+│   │   │   ├── Button.tsx
+│   │   │   ├── Card.tsx
+│   │   │   ├── ErrorMessage.tsx
+│   │   │   ├── Input.tsx
+│   │   │   ├── Modal.tsx
+│   │   │   ├── Pagination.tsx
+│   │   │   ├── Select.tsx
+│   │   │   ├── Skeleton.tsx
+│   │   │   ├── Toast.tsx
+│   │   │   └── Toggle.tsx
+│   │   ├── admin/
+│   │   │   └── AdminSidebar.tsx       # 管理者サイドバー
+│   │   └── worker/
+│   │       └── Header.tsx             # 担当者ヘッダー
+│   │
+│   ├── hooks/
+│   │   ├── usePersistedState.ts       # localStorage永続化
+│   │   └── useFocusTrap.ts            # フォーカストラップ
+│   │
+│   ├── lib/
+│   │   ├── auth.ts                    # セッション管理（JWT署名）
+│   │   ├── tenant.ts                  # テナント解決ユーティリティ
+│   │   ├── rate-limit.ts              # ログイン試行制限
+│   │   ├── date.ts                    # 日付ユーティリティ（JST対応）
+│   │   └── supabase/
+│   │       ├── client.ts              # ブラウザ用クライアント
+│   │       └── server.ts              # サーバー用クライアント + Service Role
+│   │
+│   ├── types/
+│   │   └── index.ts                   # 全型定義
+│   │
+│   └── middleware.ts                  # 認証ガード + テナント解決
+│
+├── supabase/
+│   ├── config.toml                    # Supabase CLI 設定
+│   ├── migrations/
+│   │   ├── 20260214000001_initial_schema.sql  # テーブル定義 + インデックス
+│   │   └── 20260214000002_rls_policies.sql    # RLS ポリシー
+│   └── seed.sql                       # 開発用シードデータ
+│
+├── docs/                              # 技術ドキュメント（本ファイル群）
+├── public/                            # 静的ファイル
+├── package.json
+├── tsconfig.json
+└── CLAUDE.md                          # AI開発アシスタント向け指示
+        </code></pre>
+
+        <h3>ルートグループ構成</h3>
+        <table>
+          <tr><th>グループ</th><th>パス</th><th>レイアウト</th><th>認証</th></tr>
+          <tr><td><code>(worker)</code></td><td><code>/dashboard</code>, <code>/reception</code>, etc.</td><td>ヘッダー付き</td><td>Worker PIN</td></tr>
+          <tr><td><code>admin/(auth)</code></td><td><code>/admin/login</code></td><td>なし（認証ページ）</td><td>不要</td></tr>
+          <tr><td><code>admin/(dashboard)</code></td><td><code>/admin/dashboard</code>, etc.</td><td>サイドバー付き</td><td>Admin OAuth</td></tr>
+        </table>
+
+        <h3>主要ファイル一覧</h3>
+        <table>
+          <tr><th>ファイル</th><th>役割</th></tr>
+          <tr><td><code>src/middleware.ts</code></td><td>テナント解決 + JWT認証ガード。全リクエストを処理</td></tr>
+          <tr><td><code>src/lib/auth.ts</code></td><td>JWT セッション管理（作成・取得・削除）+ Remember Token</td></tr>
+          <tr><td><code>src/lib/tenant.ts</code></td><td>Server Component 用テナント slug 解決</td></tr>
+          <tr><td><code>src/lib/supabase/server.ts</code></td><td>サーバー用 Supabase クライアント + Service Role</td></tr>
+          <tr><td><code>src/lib/supabase/client.ts</code></td><td>ブラウザ用 Supabase クライアント</td></tr>
+          <tr><td><code>src/lib/rate-limit.ts</code></td><td>IP ベースのログイン試行制限（5回/15分ウィンドウ）</td></tr>
+          <tr><td><code>src/types/index.ts</code></td><td>全型定義（ステータス遷移マップ含む）</td></tr>
+          <tr><td><code>src/app/globals.css</code></td><td>侘寂デザインシステム（Tailwind CSS v4）</td></tr>
+        </table>
+      </section>

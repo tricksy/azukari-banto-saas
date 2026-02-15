@@ -1,0 +1,108 @@
+      <section id="overview">
+        <h2>プロジェクト概要</h2>
+        <p>預かり番頭 SaaS は、着物・帯の預かりから加工業者への発注、顧客への返送までを一元管理するマルチテナント型クラウドシステムです。商品単位での預かり番号管理と写真記録により、依頼漏れ・返送漏れ・品質トラブルを防止します。</p>
+
+        <div class="stats">
+          <div class="stat-card"><div class="number">3</div><div class="label">ユーザー種別</div></div>
+          <div class="stat-card"><div class="number">12</div><div class="label">ステータス</div></div>
+          <div class="stat-card"><div class="number">Multi</div><div class="label">テナント対応</div></div>
+          <div class="stat-card"><div class="number">RLS</div><div class="label">データ分離</div></div>
+        </div>
+
+        <h3>KURATSUGI（単体版）との主な違い</h3>
+        <table>
+          <tr><th>項目</th><th>KURATSUGI（単体版）</th><th>SaaS版</th></tr>
+          <tr><td>テナント</td><td>単一店舗</td><td>マルチテナント（複数店舗）</td></tr>
+          <tr><td>データベース</td><td>Google Spreadsheet</td><td>Supabase（PostgreSQL）</td></tr>
+          <tr><td>ストレージ</td><td>Google Drive</td><td>Supabase Storage（予定）</td></tr>
+          <tr><td>認証</td><td>Worker PIN + Admin OAuth（2種別）</td><td>Worker PIN + Admin OAuth + Platform Admin（3種別）</td></tr>
+          <tr><td>データ分離</td><td>不要（単一テナント）</td><td>RLS + tenant_id による行レベルセキュリティ</td></tr>
+          <tr><td>ルーティング</td><td>単一ドメイン</td><td>サブドメイン（{slug}.kuratsugi.app）</td></tr>
+          <tr><td>メール</td><td>GAS（Gmail）</td><td>未定（Resend等を検討）</td></tr>
+          <tr><td>対象規模</td><td>1店舗</td><td>複数の着物店・呉服店</td></tr>
+        </table>
+
+        <h3>なぜ SaaS 化するのか</h3>
+        <ul>
+          <li><strong>スケーラビリティ</strong>: 新しい店舗を追加する際、テナント登録のみで即座に利用開始可能</li>
+          <li><strong>運用効率</strong>: コードベースは単一。バグ修正や機能追加が全テナントに同時反映</li>
+          <li><strong>データ信頼性</strong>: PostgreSQL による ACID トランザクション。Google Sheets の行ロック問題を解消</li>
+          <li><strong>セキュリティ</strong>: RLS によるデータベースレベルのテナント分離。アプリケーション層のバグでもデータ漏洩を防止</li>
+        </ul>
+
+        <h3>システム概要</h3>
+        <table>
+          <tr><th>機能</th><th>説明</th><th>対象ユーザー</th></tr>
+          <tr><td>預かり登録</td><td>顧客・商品情報の登録、写真撮影</td><td>担当者</td></tr>
+          <tr><td>発注管理</td><td>加工業者への発送、加工依頼書出力</td><td>担当者</td></tr>
+          <tr><td>業者からの返却受入</td><td>業者からの返却処理、品質チェック</td><td>担当者</td></tr>
+          <tr><td>顧客への返送管理</td><td>顧客への返送、追跡番号管理</td><td>担当者</td></tr>
+          <tr><td>マスタ管理</td><td>取引先・業者・担当者の管理</td><td>管理者</td></tr>
+          <tr><td>操作ログ</td><td>全操作の記録・追跡</td><td>管理者</td></tr>
+          <tr><td>テナント管理</td><td>店舗の登録・プラン管理・利用停止</td><td>プラットフォーム管理者</td></tr>
+        </table>
+
+        <h3>採番ルール</h3>
+        <table>
+          <tr><th>番号種別</th><th>形式</th><th>例</th><th>用途</th></tr>
+          <tr><td>受付番号（親）</td><td>{担当者ID}-{YYYYMMDDHHmm}</td><td>T01-202601181430</td><td>同一受付の商品グルーピング</td></tr>
+          <tr><td>預かり番号（子）</td><td>{担当者ID}-{YYYYMMDDHHmmss}-{連番2桁}</td><td>T01-20260118143025-01</td><td>商品1点ごとの管理</td></tr>
+        </table>
+
+        <h3>デザインテーマ</h3>
+        <p><strong>侘寂（Wabi-Sabi）</strong> - 和の美意識を反映したシンプルで温かみのあるデザイン</p>
+        <table>
+          <tr><th>要素</th><th>色</th><th>用途</th></tr>
+          <tr><td>墨（Sumi）</td><td style="background:#1A1A1A;color:white;padding:4px 12px;">#1A1A1A</td><td>メインテキスト</td></tr>
+          <tr><td>胡粉（Gofun）</td><td style="background:#F8F7F3;padding:4px 12px;">#F8F7F3</td><td>背景</td></tr>
+          <tr><td>朱（Shu）</td><td style="background:#8B2332;color:white;padding:4px 12px;">#8B2332</td><td>プライマリアクセント</td></tr>
+          <tr><td>老竹色（Oitake）</td><td style="background:#5A6650;color:white;padding:4px 12px;">#5A6650</td><td>成功状態</td></tr>
+          <tr><td>深緋（Kokiake）</td><td style="background:#7B2D26;color:white;padding:4px 12px;">#7B2D26</td><td>エラー状態</td></tr>
+        </table>
+      </section>
+
+      <section id="tech-stack">
+        <h2>技術スタック</h2>
+
+        <h3>フロントエンド</h3>
+        <table>
+          <tr><th>技術</th><th>バージョン</th><th>用途</th></tr>
+          <tr><td>Next.js</td><td>16.x</td><td>フレームワーク（App Router）</td></tr>
+          <tr><td>React</td><td>19.x</td><td>UIライブラリ</td></tr>
+          <tr><td>TypeScript</td><td>5.x</td><td>型安全な開発</td></tr>
+          <tr><td>Tailwind CSS</td><td>4.x</td><td>スタイリング</td></tr>
+        </table>
+
+        <h3>バックエンド / データベース</h3>
+        <table>
+          <tr><th>技術</th><th>用途</th></tr>
+          <tr><td>Next.js API Routes</td><td>サーバーサイド処理</td></tr>
+          <tr><td>Supabase（PostgreSQL）</td><td>データベース（RLS によるテナント分離）</td></tr>
+          <tr><td>@supabase/ssr</td><td>サーバーサイド Supabase クライアント</td></tr>
+          <tr><td>@supabase/supabase-js</td><td>サービスロールクライアント</td></tr>
+        </table>
+
+        <h3>認証・セキュリティ</h3>
+        <table>
+          <tr><th>技術</th><th>用途</th></tr>
+          <tr><td>jose</td><td>JWT 署名・検証（HS256）</td></tr>
+          <tr><td>bcryptjs</td><td>PIN コードハッシュ化</td></tr>
+          <tr><td>独自レート制限</td><td>ログイン試行制限（5回/15分）</td></tr>
+        </table>
+
+        <h3>インフラ</h3>
+        <table>
+          <tr><th>サービス</th><th>用途</th></tr>
+          <tr><td>Vercel</td><td>ホスティング・デプロイ</td></tr>
+          <tr><td>Supabase Cloud</td><td>マネージド PostgreSQL</td></tr>
+          <tr><td>Vercel Cron Jobs</td><td>定期アラートチェック（予定）</td></tr>
+        </table>
+
+        <h3>認証方式一覧</h3>
+        <table>
+          <tr><th>ユーザー種別</th><th>認証方式</th><th>セッション</th><th>管理方法</th></tr>
+          <tr><td>担当者（Worker）</td><td>PINコード認証（8桁）</td><td>JWT Cookie（8時間）</td><td>管理者が発行・管理</td></tr>
+          <tr><td>管理者（Admin）</td><td>メール/OAuth</td><td>JWT Cookie（8時間）</td><td>プラットフォーム管理者が設定</td></tr>
+          <tr><td>プラットフォーム管理者</td><td>メール認証</td><td>JWT Cookie</td><td>platform_admins テーブルで管理</td></tr>
+        </table>
+      </section>

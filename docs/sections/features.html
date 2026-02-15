@@ -1,0 +1,306 @@
+      <section id="status-management">
+        <h2>ステータス管理</h2>
+
+        <h3>ステータス一覧（12種）</h3>
+        <table>
+          <tr><th>コード</th><th>表示名</th><th>説明</th><th>最終状態</th></tr>
+          <tr><td><code>draft</code></td><td>顧客未設定</td><td>受付登録中。顧客紐付け前の下書き状態</td><td>-</td></tr>
+          <tr><td><code>received</code></td><td>受付済</td><td>顧客紐付け完了。通常は使用しない</td><td>-</td></tr>
+          <tr><td><code>pending_ship</code></td><td>業者への発送待ち</td><td>加工業者への発送を待っている状態</td><td>-</td></tr>
+          <tr><td><code>processing</code></td><td>加工中</td><td>業者にて加工処理中</td><td>-</td></tr>
+          <tr><td><code>returned</code></td><td>業者からの返却済</td><td>業者からの加工完了品を受け入れ済み</td><td>-</td></tr>
+          <tr><td><code>paid_storage</code></td><td>有料預かり</td><td>顧客の希望により有料で保管中</td><td>-</td></tr>
+          <tr><td><code>completed</code></td><td>完了</td><td>顧客へ返送済み。最終状態</td><td>完了</td></tr>
+          <tr><td><code>rework</code></td><td>再加工</td><td>品質不良等により再度加工が必要</td><td>-</td></tr>
+          <tr><td><code>on_hold</code></td><td>顧客への返送保留</td><td>何らかの理由で返送を保留中</td><td>-</td></tr>
+          <tr><td><code>awaiting_customer</code></td><td>顧客確認待ち</td><td>顧客の確認・判断を待っている状態</td><td>-</td></tr>
+          <tr><td><code>cancelled</code></td><td>キャンセル</td><td>キャンセル処理中（業者発送前のみ可能）</td><td>-</td></tr>
+          <tr><td><code>cancelled_completed</code></td><td>キャンセル完了</td><td>キャンセル品の顧客返送完了。最終状態</td><td>完了</td></tr>
+        </table>
+
+        <h3>ステータス遷移図</h3>
+        <pre><code>
+                  +--------+
+                  | draft  |
+                  +---+----+
+                      |
+              +-------+-------+
+              v               v
+        +-----------+    +-----------+
+        |pending_ship|    | cancelled |
+        +-----+-----+    +-----+-----+
+              |                 |
+     +--------+--------+       v
+     v        v        v  +-----------+
++---------+ +-----+ +--+  |cancelled_ |
+|received | |     | |     | completed |
++---------+ |     | |     +-----------+
+     |      |     | |
+     v      |     | |
++-----------+     | |
+| processing|<----|-+
++-----+-----+    |
+      |           |
+  +---+---+  +---+---+
+  v       v  v       |
++------+ +------+   |
+|return| |on_hold|   |
+| -ed  | +------+   |
++--+---+             |
+   |                 |
+   +--------+--------+------+
+   v        v        v      v
++------+ +------+ +------+ +-------+
+|complt| |paid_ | |rework| |await_ |
+| -ed  | |strg  | +--+---+ |custmr |
++------+ +--+---+    |     +---+---+
+             |        |        |
+             v        v        v
+          +------+ +------+ +------+
+          |return| |procss| |complt|
+          | -ed  | | -ing | | -ed  |
+          +------+ +------+ +------+
+        </code></pre>
+
+        <h3>許可される遷移マップ</h3>
+        <table>
+          <tr><th>現在のステータス</th><th>遷移可能なステータス</th><th>備考</th></tr>
+          <tr><td>draft</td><td>pending_ship, cancelled</td><td>顧客紐付けで pending_ship へ</td></tr>
+          <tr><td>received</td><td>pending_ship, cancelled</td><td>業者発送前はキャンセル可能</td></tr>
+          <tr><td>pending_ship</td><td>processing, received, cancelled</td><td>業者発送前はキャンセル可能</td></tr>
+          <tr><td>processing</td><td>returned, on_hold</td><td>業者発送後はキャンセル不可</td></tr>
+          <tr><td>returned</td><td>completed, paid_storage, rework, on_hold, awaiting_customer</td><td>多くの分岐先がある</td></tr>
+          <tr><td>paid_storage</td><td>completed, returned</td><td>保管終了 or 返却</td></tr>
+          <tr><td>completed</td><td>（なし）</td><td>最終状態</td></tr>
+          <tr><td>rework</td><td>processing</td><td>再度加工へ</td></tr>
+          <tr><td>on_hold</td><td>returned, processing</td><td>保留解除</td></tr>
+          <tr><td>awaiting_customer</td><td>returned, completed</td><td>顧客確認後</td></tr>
+          <tr><td>cancelled</td><td>cancelled_completed</td><td>キャンセル品の返送</td></tr>
+          <tr><td>cancelled_completed</td><td>（なし）</td><td>最終状態</td></tr>
+        </table>
+
+        <div class="warning">
+          <strong>キャンセル制約:</strong> キャンセルは業者への発送前（received / pending_ship）のみ可能です。業者発送後（processing 以降）はキャンセルできません。
+        </div>
+      </section>
+
+      <section id="reception">
+        <h2>預かり登録（受付ウィザード）</h2>
+
+        <h3>ウィザードフロー</h3>
+        <pre><code>
+  Step 1: 顧客選択
+     |
+     +-- 取引先 → 取引先一覧から選択 → 顧客選択/新規登録
+     |
+     +-- 個人 → 顧客選択/新規登録
+     |
+     v
+  Step 2: 商品登録（複数可）
+     |
+     +-- 商品種別（着物/帯/その他）
+     +-- 商品名・品目
+     +-- 色・柄、素材、サイズ
+     +-- 状態メモ
+     +-- 依頼種別・依頼詳細
+     +-- 写真撮影（表面・裏面・追加写真）
+     |
+     v
+  Step 3: 確認・登録
+     |
+     +-- 受付番号の自動生成: {担当者ID}-{YYYYMMDDHHmm}
+     +-- 預かり番号の自動生成: {担当者ID}-{YYYYMMDDHHmmss}-{連番}
+     +-- ステータス: draft → pending_ship（顧客紐付け時）
+     |
+     v
+  登録完了 → ダッシュボードへ
+        </code></pre>
+
+        <h3>商品種別と加工種別</h3>
+        <table>
+          <tr><th>商品種別</th><th>コード</th></tr>
+          <tr><td>着物</td><td>kimono / 着物</td></tr>
+          <tr><td>帯</td><td>obi / 帯</td></tr>
+          <tr><td>その他</td><td>other / その他</td></tr>
+        </table>
+
+        <table>
+          <tr><th>加工種別</th><th>コード</th></tr>
+          <tr><td>洗い</td><td>washing / 洗い</td></tr>
+          <tr><td>染め直し</td><td>dyeing / 染め直し</td></tr>
+          <tr><td>仕立て直し</td><td>tailoring / 仕立て直し</td></tr>
+          <tr><td>シミ抜き</td><td>stain_removal / シミ抜き</td></tr>
+          <tr><td>寸法直し</td><td>alteration / 寸法直し</td></tr>
+          <tr><td>その他</td><td>other / その他</td></tr>
+        </table>
+      </section>
+
+      <section id="order-management">
+        <h2>発注管理</h2>
+
+        <h3>発注フロー</h3>
+        <pre><code>
+  pending_ship の商品一覧
+       |
+       v
+  [1] 業者選択
+       +-- 業者一覧から選択
+       +-- 専門分野でフィルタ
+       |
+       v
+  [2] 発送情報入力
+       +-- 発送予定日
+       +-- 送り状番号（任意）
+       +-- 配送業者（ヤマト/佐川/郵便/その他）
+       |
+       v
+  [3] ステータス更新
+       pending_ship → processing
+       +-- ship_to_vendor_date に発送日を記録
+       +-- ship_history に履歴追加
+       |
+       v
+  [4] 操作ログ記録
+        </code></pre>
+
+        <h3>配送業者と追跡URL</h3>
+        <table>
+          <tr><th>業者</th><th>コード</th><th>追跡URL形式</th></tr>
+          <tr><td>ヤマト運輸</td><td>yamato</td><td><code>https://member.kms.kuronekoyamato.co.jp/parcel/detail?pno={番号}</code></td></tr>
+          <tr><td>佐川急便</td><td>sagawa</td><td><code>https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo={番号}</code></td></tr>
+          <tr><td>日本郵便</td><td>japanpost</td><td><code>https://trackings.post.japanpost.jp/services/srv/search/direct?...reqCodeNo1={番号}</code></td></tr>
+          <tr><td>その他</td><td>other</td><td>リンクなし</td></tr>
+        </table>
+      </section>
+
+      <section id="return-management">
+        <h2>業者からの返却受入・顧客への返送</h2>
+
+        <h3>業者からの返却受入フロー</h3>
+        <pre><code>
+  processing の商品一覧
+       |
+       v
+  [1] 返却品の確認
+       +-- 品質チェック
+       +-- 加工後写真の撮影（表面・裏面）
+       |
+       v
+  [2] ステータス更新
+       processing → returned
+       +-- return_from_vendor_date に返却日を記録
+       +-- return_history に履歴追加
+       |
+       v
+  [3] 分岐判定
+       +-- 品質OK → 顧客返送待ち
+       +-- 品質NG → rework（再加工）
+       +-- 顧客確認要 → awaiting_customer
+       +-- 有料預かり → paid_storage
+        </code></pre>
+
+        <h3>顧客への返送フロー</h3>
+        <pre><code>
+  returned / awaiting_customer の商品一覧
+       |
+       v
+  [1] 返送情報入力
+       +-- 送り状番号
+       +-- 配送業者
+       |
+       v
+  [2] ステータス更新
+       returned → completed
+       +-- return_to_customer_date に返送日を記録
+       +-- customer_tracking_number, customer_carrier を記録
+        </code></pre>
+      </section>
+
+      <section id="paid-storage">
+        <h2>有料預かり管理</h2>
+
+        <h3>有料預かりフロー</h3>
+        <pre><code>
+  returned の商品
+       |
+       v
+  [1] 有料預かり設定
+       +-- is_paid_storage = true
+       +-- paid_storage_start_date = 設定日
+       +-- status: returned → paid_storage
+       |
+       v
+  [2] 保管期間中
+       +-- 有料預かり一覧に表示
+       +-- 保管期間の計算・表示
+       |
+       v
+  [3] 保管終了
+       +-- paid_storage → completed（顧客返送）
+       +-- paid_storage → returned（返却処理に戻す）
+        </code></pre>
+      </section>
+
+      <section id="claims-management">
+        <h2>クレーム管理</h2>
+
+        <h3>クレームステータス</h3>
+        <table>
+          <tr><th>ステータス</th><th>表示名</th><th>説明</th></tr>
+          <tr><td><code>open</code></td><td>対応中</td><td>クレーム対応進行中</td></tr>
+          <tr><td><code>closed</code></td><td>完了</td><td>クレーム対応完了</td></tr>
+        </table>
+
+        <h3>クレームカテゴリ</h3>
+        <table>
+          <tr><th>カテゴリ</th><th>表示名</th><th>説明</th></tr>
+          <tr><td><code>quality</code></td><td>品質</td><td>仕上がり品質、加工ミス、汚損など</td></tr>
+          <tr><td><code>delivery</code></td><td>納期</td><td>納期遅延、発送遅延など</td></tr>
+          <tr><td><code>response</code></td><td>対応</td><td>接客対応、連絡不備など</td></tr>
+          <tr><td><code>other</code></td><td>その他</td><td>上記に該当しないクレーム</td></tr>
+        </table>
+
+        <h3>クレームと商品ステータスの関係</h3>
+        <div class="info">
+          <strong>設計方針:</strong> クレームは商品のステータスとは独立して管理されます。<code>is_claim_active</code> フラグにより、任意のステータスの商品にクレームを紐付けることができます。
+        </div>
+
+        <h3>クレーム対応ログアクション</h3>
+        <table>
+          <tr><th>アクション</th><th>説明</th></tr>
+          <tr><td>opened</td><td>クレーム登録</td></tr>
+          <tr><td>updated</td><td>対応内容の更新</td></tr>
+          <tr><td>resolved</td><td>解決処理</td></tr>
+          <tr><td>closed</td><td>クレーム完了</td></tr>
+          <tr><td>reopened</td><td>再オープン</td></tr>
+        </table>
+      </section>
+
+      <section id="alert-system">
+        <h2>アラートシステム</h2>
+
+        <h3>アラート種別</h3>
+        <table>
+          <tr><th>種別</th><th>コード</th><th>トリガー条件</th></tr>
+          <tr><td>発送期限</td><td><code>shipment_due</code></td><td>業者への発送予定日が近づいている</td></tr>
+          <tr><td>返送期限</td><td><code>return_due</code></td><td>顧客への返送予定日が近づいている</td></tr>
+          <tr><td>期限超過</td><td><code>overdue</code></td><td>予定日を過ぎている</td></tr>
+          <tr><td>滞留警告</td><td><code>stagnant</code></td><td>長期間ステータスが変更されていない</td></tr>
+        </table>
+
+        <h3>アラート設定</h3>
+        <p>テナントごとに <code>tenant_settings</code> テーブルで設定可能:</p>
+        <table>
+          <tr><th>キー</th><th>デフォルト値</th><th>説明</th></tr>
+          <tr><td><code>alert_days_before_due</code></td><td>3</td><td>期限の何日前にアラートを出すか</td></tr>
+          <tr><td><code>archive_days_after_complete</code></td><td>90</td><td>完了後何日でアーカイブするか</td></tr>
+        </table>
+
+        <h3>優先度</h3>
+        <table>
+          <tr><th>優先度</th><th>コード</th><th>用途</th></tr>
+          <tr><td>通常</td><td><code>normal</code></td><td>標準的な処理</td></tr>
+          <tr><td>急ぎ</td><td><code>urgent</code></td><td>優先対応が必要</td></tr>
+          <tr><td>特急</td><td><code>express</code></td><td>最優先での対応が必要</td></tr>
+        </table>
+      </section>

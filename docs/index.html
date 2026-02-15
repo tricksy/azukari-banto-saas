@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>預かり番頭 SaaS 技術ドキュメント</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/docs.css">
+</head>
+<body>
+  <!-- Reading Progress Bar -->
+  <div class="progress-indicator"></div>
+
+  <!-- Mobile Menu Button -->
+  <button type="button" class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+
+  <!-- Scroll to Top Button -->
+  <button type="button" class="scroll-top" onclick="scrollToTop()">↑</button>
+
+  <!-- Mobile Overlay -->
+  <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>預かり番頭 SaaS Docs</h1>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="検索..." oninput="filterNav(this.value)">
+        </div>
+      </div>
+      <nav>
+        <div class="category" onclick="toggleCategory(this)">概要</div>
+        <div class="category-links">
+          <a href="#overview">プロジェクト概要</a>
+          <a href="#tech-stack">技術スタック</a>
+        </div>
+
+        <div class="category" onclick="toggleCategory(this)">アーキテクチャ</div>
+        <div class="category-links">
+          <a href="#system">システムアーキテクチャ</a>
+          <a href="#directory-structure">ディレクトリ構成</a>
+        </div>
+
+        <div class="category" onclick="toggleCategory(this)">認証システム</div>
+        <div class="category-links">
+          <a href="#auth-overview">認証概要</a>
+          <a href="#auth-flow">認証フロー</a>
+          <a href="#auth-middleware">ミドルウェア</a>
+        </div>
+
+        <div class="category" onclick="toggleCategory(this)">データベース</div>
+        <div class="category-links">
+          <a href="#database-overview">スキーマ概要</a>
+          <a href="#database-tables">テーブル定義</a>
+          <a href="#database-rls">RLS・インデックス</a>
+        </div>
+
+        <div class="category" onclick="toggleCategory(this)">機能実装</div>
+        <div class="category-links">
+          <a href="#status-management">ステータス管理</a>
+          <a href="#reception">預かり登録</a>
+          <a href="#order-management">発注管理</a>
+          <a href="#return-management">返却・返送</a>
+          <a href="#paid-storage">有料預かり</a>
+          <a href="#claims-management">クレーム管理</a>
+          <a href="#alert-system">アラート</a>
+        </div>
+
+        <div class="category" onclick="toggleCategory(this)">開発ガイド</div>
+        <div class="category-links">
+          <a href="#build-guide">ビルド方法</a>
+          <a href="#dev-environment">環境設定</a>
+          <a href="#coding-standards">コーディング規約</a>
+          <a href="#deployment">デプロイ</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <!-- 概要 -->
+      <div data-file="overview" class="section-placeholder loading">
+        <div class="skeleton"></div>
+      </div>
+
+      <!-- アーキテクチャ -->
+      <div data-file="architecture" class="section-placeholder loading">
+        <div class="skeleton"></div>
+      </div>
+
+      <!-- 認証システム -->
+      <div data-file="authentication" class="section-placeholder loading">
+        <div class="skeleton"></div>
+      </div>
+
+      <!-- データベース -->
+      <div data-file="database" class="section-placeholder loading">
+        <div class="skeleton"></div>
+      </div>
+
+      <!-- 機能実装 -->
+      <div data-file="features" class="section-placeholder loading">
+        <div class="skeleton"></div>
+      </div>
+
+      <!-- 開発ガイド -->
+      <div data-file="development" class="section-placeholder loading">
+        <div class="skeleton"></div>
+      </div>
+
+      <!-- Footer -->
+      <footer>
+        <p>預かり番頭 SaaS 技術ドキュメント</p>
+        <p>Last Updated: 2026-02-14</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Load embedded sections for file:// protocol support -->
+  <script src="sections/all-sections.js"></script>
+  <script src="js/docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,220 @@
+      <section id="database-overview">
+        <h2>データベース概要</h2>
+
+        <p>預かり番頭 SaaS は Supabase（PostgreSQL）を使用します。全業務テーブルは <code>tenant_id</code> カラムを持ち、Row Level Security（RLS）によりテナント間のデータ分離を保証します。</p>
+
+        <h3>スキーマ概要</h3>
+        <div class="stats">
+          <div class="stat-card"><div class="number">12</div><div class="label">テーブル数</div></div>
+          <div class="stat-card"><div class="number">8</div><div class="label">ENUM定義</div></div>
+          <div class="stat-card"><div class="number">10</div><div class="label">RLSポリシー</div></div>
+          <div class="stat-card"><div class="number">17</div><div class="label">インデックス</div></div>
+        </div>
+
+        <h3>ENUM 定義一覧</h3>
+        <table>
+          <tr><th>ENUM名</th><th>値</th><th>用途</th></tr>
+          <tr><td><code>item_status</code></td><td>draft, received, pending_ship, processing, returned, paid_storage, completed, rework, on_hold, awaiting_customer, cancelled, cancelled_completed</td><td>商品ステータス</td></tr>
+          <tr><td><code>carrier_type</code></td><td>yamato, sagawa, japanpost, other</td><td>配送業者</td></tr>
+          <tr><td><code>claim_status</code></td><td>open, closed</td><td>クレーム状態</td></tr>
+          <tr><td><code>claim_category</code></td><td>quality, delivery, response, other</td><td>クレーム種別</td></tr>
+          <tr><td><code>claim_log_action</code></td><td>opened, updated, resolved, closed, reopened</td><td>クレーム対応ログ</td></tr>
+          <tr><td><code>log_action</code></td><td>create, update, delete, status_change, login, logout</td><td>操作ログ種別</td></tr>
+          <tr><td><code>log_target_type</code></td><td>item, reception, customer, partner, vendor, worker, session</td><td>操作対象種別</td></tr>
+          <tr><td><code>tenant_plan</code></td><td>free, standard, premium</td><td>テナントプラン</td></tr>
+          <tr><td><code>tenant_status</code></td><td>active, suspended, cancelled</td><td>テナント状態</td></tr>
+        </table>
+      </section>
+
+      <section id="database-tables">
+        <h2>テーブル定義</h2>
+
+        <h3>tenants（テナント管理）</h3>
+        <p>プラットフォーム横断テーブル。RLS は適用しない。</p>
+        <table>
+          <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+          <tr><td>id</td><td>UUID</td><td>PK, DEFAULT gen_random_uuid()</td><td>テナントID</td></tr>
+          <tr><td>slug</td><td>VARCHAR(63)</td><td>UNIQUE NOT NULL</td><td>サブドメイン識別子</td></tr>
+          <tr><td>name</td><td>VARCHAR(255)</td><td>NOT NULL</td><td>店舗名</td></tr>
+          <tr><td>plan</td><td>tenant_plan</td><td>NOT NULL DEFAULT 'free'</td><td>契約プラン</td></tr>
+          <tr><td>status</td><td>tenant_status</td><td>NOT NULL DEFAULT 'active'</td><td>テナント状態</td></tr>
+          <tr><td>settings</td><td>JSONB</td><td>NOT NULL DEFAULT '{}'</td><td>テナント固有設定</td></tr>
+          <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>NOT NULL DEFAULT now()</td><td>作成日時</td></tr>
+          <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>NOT NULL DEFAULT now()</td><td>更新日時</td></tr>
+        </table>
+
+        <h3>workers（担当者）</h3>
+        <table>
+          <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
+          <tr><td>id</td><td>UUID</td><td>PK</td><td>内部ID</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK → tenants(id) ON DELETE CASCADE</td><td>所属テナント</td></tr>
+          <tr><td>worker_id</td><td>VARCHAR(20)</td><td>UNIQUE(tenant_id, worker_id)</td><td>担当者ID（T01等）</td></tr>
+          <tr><td>name</td><td>VARCHAR(100)</td><td>NOT NULL</td><td>担当者名</td></tr>
+          <tr><td>pin_hash</td><td>VARCHAR(255)</td><td>NOT NULL</td><td>PIN bcryptハッシュ</td></tr>
+          <tr><td>email</td><td>VARCHAR(255)</td><td></td><td>メールアドレス</td></tr>
+          <tr><td>is_active</td><td>BOOLEAN</td><td>NOT NULL DEFAULT true</td><td>有効フラグ</td></tr>
+          <tr><td>last_login_at</td><td>TIMESTAMPTZ</td><td></td><td>最終ログイン</td></tr>
+          <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>NOT NULL DEFAULT now()</td><td>作成日時</td></tr>
+          <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>NOT NULL DEFAULT now()</td><td>更新日時</td></tr>
+        </table>
+
+        <h3>items（商品 / 預かり品）</h3>
+        <p>最も多くのカラムを持つ中心テーブル。</p>
+        <table>
+          <tr><th>カラム</th><th>型</th><th>説明</th></tr>
+          <tr><td>id</td><td>UUID</td><td>内部ID（PK）</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK → tenants(id)</td></tr>
+          <tr><td>item_number</td><td>VARCHAR(50)</td><td>預かり番号（テナント内ユニーク）</td></tr>
+          <tr><td>reception_id</td><td>UUID</td><td>FK → receptions(id)</td></tr>
+          <tr><td>customer_name</td><td>VARCHAR(255)</td><td>顧客名（非正規化）</td></tr>
+          <tr><td>customer_name_kana</td><td>VARCHAR(255)</td><td>顧客名フリガナ（検索用）</td></tr>
+          <tr><td>partner_id</td><td>UUID</td><td>FK → partners(id)</td></tr>
+          <tr><td>partner_name</td><td>VARCHAR(255)</td><td>取引先名（非正規化）</td></tr>
+          <tr><td>product_type</td><td>VARCHAR(50)</td><td>商品種別（着物/帯/その他）</td></tr>
+          <tr><td>product_name</td><td>VARCHAR(255)</td><td>商品名・品目</td></tr>
+          <tr><td>color</td><td>VARCHAR(100)</td><td>色・柄</td></tr>
+          <tr><td>material</td><td>VARCHAR(100)</td><td>素材</td></tr>
+          <tr><td>size</td><td>VARCHAR(100)</td><td>サイズ</td></tr>
+          <tr><td>condition_note</td><td>TEXT</td><td>状態メモ</td></tr>
+          <tr><td>request_type</td><td>VARCHAR(100)</td><td>依頼種別</td></tr>
+          <tr><td>request_detail</td><td>TEXT</td><td>依頼詳細</td></tr>
+          <tr><td>status</td><td>item_status</td><td>ステータス（DEFAULT 'draft'）</td></tr>
+          <tr><td>vendor_id</td><td>UUID</td><td>FK → vendors(id)</td></tr>
+          <tr><td>vendor_name</td><td>VARCHAR(255)</td><td>業者名</td></tr>
+          <tr><td>scheduled_ship_date</td><td>DATE</td><td>発送予定日（業者へ）</td></tr>
+          <tr><td>scheduled_return_date</td><td>DATE</td><td>返送予定日（顧客へ）</td></tr>
+          <tr><td>ship_to_vendor_date</td><td>DATE</td><td>業者発送日（実績）</td></tr>
+          <tr><td>return_from_vendor_date</td><td>DATE</td><td>業者返却日（実績）</td></tr>
+          <tr><td>return_to_customer_date</td><td>DATE</td><td>顧客返送日（実績）</td></tr>
+          <tr><td>vendor_tracking_number</td><td>VARCHAR(100)</td><td>業者発送の送り状番号</td></tr>
+          <tr><td>vendor_carrier</td><td>carrier_type</td><td>業者発送の配送業者</td></tr>
+          <tr><td>customer_tracking_number</td><td>VARCHAR(100)</td><td>顧客返送の送り状番号</td></tr>
+          <tr><td>customer_carrier</td><td>carrier_type</td><td>顧客返送の配送業者</td></tr>
+          <tr><td>photo_front_url</td><td>TEXT</td><td>受入時表面写真URL</td></tr>
+          <tr><td>photo_back_url</td><td>TEXT</td><td>受入時裏面写真URL</td></tr>
+          <tr><td>photo_after_front_url</td><td>TEXT</td><td>加工後表面写真URL</td></tr>
+          <tr><td>photo_after_back_url</td><td>TEXT</td><td>加工後裏面写真URL</td></tr>
+          <tr><td>photo_front_memo</td><td>TEXT</td><td>表面写真メモ</td></tr>
+          <tr><td>photo_back_memo</td><td>TEXT</td><td>裏面写真メモ</td></tr>
+          <tr><td>photo_after_front_memo</td><td>TEXT</td><td>加工後表面写真メモ</td></tr>
+          <tr><td>photo_after_back_memo</td><td>TEXT</td><td>加工後裏面写真メモ</td></tr>
+          <tr><td>additional_photos</td><td>JSONB</td><td>追加写真（DEFAULT '[]'）</td></tr>
+          <tr><td>is_paid_storage</td><td>BOOLEAN</td><td>有料預かりフラグ</td></tr>
+          <tr><td>paid_storage_start_date</td><td>DATE</td><td>有料預かり開始日</td></tr>
+          <tr><td>is_claim_active</td><td>BOOLEAN</td><td>クレーム対応中フラグ</td></tr>
+          <tr><td>is_archived</td><td>BOOLEAN</td><td>アーカイブ済みフラグ</td></tr>
+          <tr><td>ship_history</td><td>JSONB</td><td>業者発送履歴（DEFAULT '[]'）</td></tr>
+          <tr><td>return_history</td><td>JSONB</td><td>業者返却履歴（DEFAULT '[]'）</td></tr>
+          <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>作成日時</td></tr>
+          <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>更新日時（トリガー自動更新）</td></tr>
+        </table>
+
+        <h3>receptions（受付）</h3>
+        <table>
+          <tr><th>カラム</th><th>型</th><th>説明</th></tr>
+          <tr><td>id</td><td>UUID</td><td>内部ID（PK）</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK → tenants(id)</td></tr>
+          <tr><td>reception_number</td><td>VARCHAR(50)</td><td>受付番号（テナント内ユニーク）</td></tr>
+          <tr><td>customer_id</td><td>UUID</td><td>FK → customers(id)</td></tr>
+          <tr><td>customer_name</td><td>VARCHAR(255)</td><td>顧客名</td></tr>
+          <tr><td>partner_id</td><td>UUID</td><td>FK → partners(id)</td></tr>
+          <tr><td>partner_name</td><td>VARCHAR(255)</td><td>取引先名</td></tr>
+          <tr><td>received_date</td><td>DATE</td><td>受付日</td></tr>
+          <tr><td>received_by</td><td>UUID</td><td>FK → workers(id) 受付担当者</td></tr>
+          <tr><td>item_count</td><td>INTEGER</td><td>商品数</td></tr>
+          <tr><td>notes</td><td>TEXT</td><td>備考</td></tr>
+          <tr><td>created_at / updated_at</td><td>TIMESTAMPTZ</td><td>日時</td></tr>
+        </table>
+
+        <h3>その他のテーブル</h3>
+        <table>
+          <tr><th>テーブル</th><th>主要カラム</th><th>用途</th></tr>
+          <tr><td><code>partners</code></td><td>partner_code, name, phone, email, address</td><td>取引先マスタ</td></tr>
+          <tr><td><code>customers</code></td><td>partner_id, name, name_kana, phone, email</td><td>顧客マスタ</td></tr>
+          <tr><td><code>vendors</code></td><td>vendor_id, name, specialty</td><td>加工業者マスタ</td></tr>
+          <tr><td><code>claims</code></td><td>item_id, status, category, description</td><td>クレーム管理</td></tr>
+          <tr><td><code>claim_logs</code></td><td>claim_id, worker_id, action, note</td><td>クレーム対応ログ</td></tr>
+          <tr><td><code>operation_logs</code></td><td>worker_id, action, target_type, target_id</td><td>操作ログ</td></tr>
+          <tr><td><code>tenant_settings</code></td><td>key, value</td><td>テナント個別設定</td></tr>
+          <tr><td><code>platform_admins</code></td><td>email, name</td><td>プラットフォーム管理者</td></tr>
+        </table>
+      </section>
+
+      <section id="database-rls">
+        <h2>RLS ポリシーとサービスロール</h2>
+
+        <h3>RLS 設計方針</h3>
+        <p>全業務テーブルに対して RLS を有効化し、<code>app.tenant_id</code> セッション変数によるテナント分離を実現します。</p>
+
+        <pre><code>
+-- RLS有効化
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+
+-- テナント分離ポリシー（全操作: SELECT, INSERT, UPDATE, DELETE）
+CREATE POLICY tenant_isolation ON items
+  FOR ALL USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+
+-- サービスロール用ポリシー（RLSバイパス）
+CREATE POLICY service_role_all ON items
+  FOR ALL TO service_role USING (true);
+        </code></pre>
+
+        <h3>RLS 適用テーブル一覧</h3>
+        <table>
+          <tr><th>テーブル</th><th>tenant_isolation</th><th>service_role_all</th></tr>
+          <tr><td>workers</td><td>適用</td><td>適用</td></tr>
+          <tr><td>partners</td><td>適用</td><td>適用</td></tr>
+          <tr><td>customers</td><td>適用</td><td>適用</td></tr>
+          <tr><td>vendors</td><td>適用</td><td>適用</td></tr>
+          <tr><td>receptions</td><td>適用</td><td>適用</td></tr>
+          <tr><td>items</td><td>適用</td><td>適用</td></tr>
+          <tr><td>claims</td><td>適用</td><td>適用</td></tr>
+          <tr><td>claim_logs</td><td>適用</td><td>適用</td></tr>
+          <tr><td>operation_logs</td><td>適用</td><td>適用</td></tr>
+          <tr><td>tenant_settings</td><td>適用</td><td>適用</td></tr>
+          <tr><td>tenants</td><td style="color:#7B2D26;">なし（横断テーブル）</td><td>-</td></tr>
+          <tr><td>platform_admins</td><td style="color:#7B2D26;">なし（横断テーブル）</td><td>-</td></tr>
+        </table>
+
+        <h3>サービスロールの使用場面</h3>
+        <table>
+          <tr><th>場面</th><th>理由</th><th>実装箇所</th></tr>
+          <tr><td>ログイン認証</td><td>セッション変数設定前にテナント・担当者を検索する必要がある</td><td><code>api/auth/worker/route.ts</code></td></tr>
+          <tr><td>テナント情報取得</td><td>ログイン前にテナントの存在確認が必要</td><td><code>api/tenant/route.ts</code></td></tr>
+          <tr><td>Cron ジョブ</td><td>全テナントを横断してアラートチェック</td><td><code>api/cron/*</code>（予定）</td></tr>
+          <tr><td>プラットフォーム管理</td><td>テナント管理は横断アクセスが必要</td><td>プラットフォーム管理画面（予定）</td></tr>
+        </table>
+
+        <h3>インデックス一覧</h3>
+        <table>
+          <tr><th>インデックス名</th><th>テーブル</th><th>カラム</th><th>条件</th></tr>
+          <tr><td>idx_workers_tenant</td><td>workers</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_partners_tenant</td><td>partners</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_customers_tenant</td><td>customers</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_vendors_tenant</td><td>vendors</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_receptions_tenant</td><td>receptions</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_items_tenant</td><td>items</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_claims_tenant</td><td>claims</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_claim_logs_tenant</td><td>claim_logs</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_operation_logs_tenant</td><td>operation_logs</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_tenant_settings_tenant</td><td>tenant_settings</td><td>tenant_id</td><td>-</td></tr>
+          <tr><td>idx_items_status</td><td>items</td><td>tenant_id, status</td><td>WHERE NOT is_archived</td></tr>
+          <tr><td>idx_items_reception</td><td>items</td><td>reception_id</td><td>-</td></tr>
+          <tr><td>idx_items_archived</td><td>items</td><td>tenant_id, is_archived</td><td>WHERE is_archived</td></tr>
+          <tr><td>idx_claims_status</td><td>claims</td><td>tenant_id, status</td><td>-</td></tr>
+          <tr><td>idx_claim_logs_claim</td><td>claim_logs</td><td>claim_id</td><td>-</td></tr>
+          <tr><td>idx_operation_logs_created</td><td>operation_logs</td><td>tenant_id, created_at DESC</td><td>-</td></tr>
+          <tr><td>idx_customers_partner</td><td>customers</td><td>partner_id</td><td>-</td></tr>
+        </table>
+
+        <h3>自動更新トリガー</h3>
+        <p><code>updated_at</code> カラムを持つ全テーブルに <code>update_updated_at()</code> トリガーが設定されています。UPDATE 時に自動で <code>now()</code> が設定されるため、アプリケーション側での更新は不要です。</p>
+        <pre><code>
+-- 対象テーブル:
+-- tenants, workers, partners, customers, vendors,
+-- receptions, items, tenant_settings
+CREATE TRIGGER trg_{table}_updated_at
+  BEFORE UPDATE ON {table}
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+        </code></pre>
+      </section>
