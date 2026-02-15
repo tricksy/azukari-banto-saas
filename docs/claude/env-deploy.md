@@ -12,6 +12,7 @@
 | `NEXT_PUBLIC_BASE_DOMAIN` | ○ | クライアント | ベースドメイン（クライアント用） |
 | `CRON_SECRET` | 本番必須 | サーバーのみ | Cron Job認証用シークレット |
 | `NEXT_PUBLIC_BRANCH` | 推奨 | クライアント | ブランチ名（環境識別用ヘッダー色） |
+| `NEXT_PUBLIC_ADMIN_PREFIX` | 任意 | クライアント | 管理者URLプレフィックス（例: `ctrl-a3f0`）。未設定時は `admin`。クライアントバンドルにインライン化される。 |
 
 ---
 
@@ -52,6 +53,34 @@ NEXT_PUBLIC_BASE_DOMAIN=kuratsugi.app
 
 - Middleware でサブドメインからテナントslugを抽出する際に使用
 - 開発環境ではlocalhostのため、`x-tenant-slug` ヘッダーで代替
+
+### 管理者URL難読化（Admin URL Obfuscation）
+
+`NEXT_PUBLIC_ADMIN_PREFIX` を設定すると、管理者画面のURLパスを変更できる。
+
+```
+NEXT_PUBLIC_ADMIN_PREFIX=ctrl-a3f0
+```
+
+| 項目 | 説明 |
+| ---- | ---- |
+| 設定時のURL | `/{prefix}/login`（例: `/ctrl-a3f0/login`） |
+| 未設定時のURL | `/admin/login`（デフォルト） |
+| `/admin/*` への直接アクセス | 設定時は404を返す |
+| URLリライト | Middlewareが透過的に処理 |
+
+**動作の仕組み:**
+
+1. `NEXT_PUBLIC_ADMIN_PREFIX` が設定されている場合、管理者画面は `/{prefix}/*` でのみアクセス可能になる
+2. `/admin/*` への直接アクセスは404を返し、管理者画面の存在を隠蔽する
+3. Middlewareがリクエストを受け取り、`/{prefix}/*` を内部的に `/admin/*` へリライトする
+4. クライアント側のリンクやリダイレクトもプレフィックスを使用する
+
+**本番環境での推奨事項:**
+
+- ボットやスキャナーによる `/admin` パスの自動探索を防止するため、本番環境では必ず設定すること
+- プレフィックスには推測されにくい文字列を使用する（例: `ctrl-a3f0`、`mgmt-7b2e`）
+- プレフィックスはクライアントバンドルにインライン化されるため、完全な秘匿ではないが、自動スキャンの大半を回避できる
 
 ---
 

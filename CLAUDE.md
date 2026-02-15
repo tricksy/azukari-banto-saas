@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**預かり番頭 SaaS — 着物・帯預かり管理 マルチテナントクラウドシステム**
+**預かり番頭β SaaS — 着物・帯預かり管理 マルチテナントクラウドシステム**
 
 着物店・呉服店向けに、預かった着物・帯の写真撮影、ステータス管理、返却期日のアラートを一元管理するマルチテナントSaaS。各店舗はテナントID（4桁16進数コード）でログインし、データはPostgreSQL RLSで完全分離される。
 
@@ -69,8 +69,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ユーザー種別 | 認証方式 | 状態 |
 | ------------ | -------- | ---- |
 | 担当者（Worker） | PINコード（8桁）+ JWT Cookie | 実装済み |
-| 店舗管理者（Store Admin） | メール+パスワード | TODO |
-| プラットフォーム管理者 | OAuth 2.0 | TODO |
+| 店舗管理者（Store Admin） | Google OAuth 2.0 | 実装済み |
+| プラットフォーム管理者 | OAuth 2.0 | 実装済み |
 
 ### マルチテナント
 
@@ -146,13 +146,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 │   │   │       ├── claims/page.tsx
 │   │   │       ├── logs/page.tsx
 │   │   │       ├── email-logs/page.tsx
+│   │   │       ├── tenants/page.tsx   # テナント管理
 │   │   │       ├── settings/page.tsx
 │   │   │       └── manual/page.tsx
 │   │   └── api/                     # API Routes
 │   │       ├── auth/
 │   │       │   ├── worker/route.ts  # PINコード認証
 │   │       │   ├── worker/remember/ # 記憶トークン
+│   │       │   ├── admin/route.ts   # 管理者OAuth認証
 │   │       │   └── logout/route.ts  # ログアウト
+│   │       ├── admin/
+│   │       │   └── tenants/route.ts # テナント管理API
 │   │       └── tenant/route.ts      # テナント情報取得
 │   ├── components/
 │   │   ├── ui/                      # 共通UIコンポーネント
@@ -180,6 +184,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 │   │   ├── tenant.ts                # テナント解決ユーティリティ
 │   │   ├── rate-limit.ts            # ログイン試行制限
 │   │   ├── date.ts                  # 日付ユーティリティ（JST対応）
+│   │   ├── admin-path.ts            # 管理者パス生成ユーティリティ
 │   │   └── supabase/
 │   │       ├── client.ts            # ブラウザ用Supabaseクライアント
 │   │       └── server.ts            # サーバー用 + Service Roleクライアント
@@ -278,6 +283,7 @@ supabase stop
 - [ ] APIキーやPINがハードコードされていないこと
 - [ ] 環境変数が適切に設定されていること
 - [ ] SUPABASE_SERVICE_ROLE_KEY がクライアントに露出していないこと
+- [ ] `NEXT_PUBLIC_ADMIN_PREFIX` が設定されていること（管理者URL難読化）
 
 ---
 

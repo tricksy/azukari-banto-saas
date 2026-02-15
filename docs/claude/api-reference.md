@@ -6,6 +6,7 @@
 | -------------- | -------- | ---- |
 | /api/auth/worker | POST | 担当者PIN認証（記憶トークン発行） |
 | /api/auth/worker/remember | POST | 記憶トークンによる自動ログイン |
+| /api/auth/admin | POST | 管理者Google OAuth認証 |
 | /api/auth/logout | POST | ログアウト（Cookie削除） |
 | /api/tenant | GET | テナント情報取得（公開API） |
 
@@ -76,6 +77,32 @@
 | 401 | 担当者が無効です | 担当者無効化済み |
 | 403 | 店舗が利用停止中です | テナント停止中 |
 
+### POST /api/auth/admin
+
+管理者のGoogle OAuth認証。Google Sign-Inのcredentialトークンを受け取り、`admin_users`テーブルで許可されたメールか検証し、JWTセッションCookieを発行する。
+
+**リクエストボディ:**
+```json
+{
+  "credential": "google-id-token-string"
+}
+```
+
+**成功レスポンス (200):**
+```json
+{
+  "success": true
+}
+```
+
+**エラーレスポンス:**
+
+| ステータス | エラー | 条件 |
+| ---------- | ------ | ---- |
+| 400 | credentialが必要です | credential未指定 |
+| 401 | 認証に失敗しました | Googleトークン検証失敗 |
+| 403 | 管理者として登録されていません | admin_usersに未登録のメール |
+
 ### POST /api/auth/logout
 
 セッションCookieを削除してログアウト。
@@ -136,7 +163,95 @@
 
 ---
 
-## 管理者専用（TODO - 未実装）
+## 管理者専用 — テナント管理（実装済み）
+
+| エンドポイント | メソッド | 説明 |
+| -------------- | -------- | ---- |
+| /api/admin/tenants | GET | テナント一覧取得 |
+| /api/admin/tenants | POST | テナント新規作成 |
+| /api/admin/tenants | PATCH | テナント情報更新 |
+
+### GET /api/admin/tenants
+
+全テナント情報を一覧取得する。管理者認証必須。
+
+**成功レスポンス (200):**
+```json
+{
+  "tenants": [
+    {
+      "id": "uuid",
+      "name": "デモ着物店",
+      "slug": "A3F0",
+      "status": "active",
+      "settings": {},
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+### POST /api/admin/tenants
+
+テナントを新規作成する。管理者認証必須。
+
+**リクエストボディ:**
+```json
+{
+  "name": "新規店舗",
+  "slug": "C4D5",
+  "status": "active",
+  "settings": {}
+}
+```
+
+| フィールド | 必須 | 説明 |
+| ---------- | ---- | ---- |
+| name | ○ | 店舗名 |
+| slug | ○ | テナントID（4桁16進数） |
+| status | - | テナント状態（デフォルト: active） |
+| settings | - | テナント設定（JSON） |
+
+**成功レスポンス (201):**
+```json
+{
+  "tenant": { "id": "uuid", "name": "新規店舗", "slug": "C4D5", "status": "active" }
+}
+```
+
+### PATCH /api/admin/tenants
+
+既存テナントの情報を更新する。管理者認証必須。
+
+**リクエストボディ:**
+```json
+{
+  "id": "uuid",
+  "name": "更新後の店舗名",
+  "slug": "C4D5",
+  "status": "suspended",
+  "settings": {}
+}
+```
+
+| フィールド | 必須 | 説明 |
+| ---------- | ---- | ---- |
+| id | ○ | テナントUUID |
+| name | - | 店舗名 |
+| slug | - | テナントID（4桁16進数） |
+| status | - | テナント状態 |
+| settings | - | テナント設定（JSON） |
+
+**成功レスポンス (200):**
+```json
+{
+  "tenant": { "id": "uuid", "name": "更新後の店舗名", "slug": "C4D5", "status": "suspended" }
+}
+```
+
+---
+
+## 管理者専用 — その他（TODO - 未実装）
 
 | エンドポイント | メソッド | 説明 |
 | -------------- | -------- | ---- |
@@ -171,7 +286,8 @@
 ### 認証
 
 - 認証系API (`/api/auth/*`, `/api/tenant`): 認証不要
-- その他のAPI: JWT署名付きセッションCookieが必須
+- 担当者用API: JWT署名付きセッションCookie (`kuratsugi_session`) が必須
+- 管理者用API (`/api/admin/*`): JWT署名付き管理者セッションCookieが必須（Google OAuth認証で発行）
 - 未認証時: `{ error: '認証が必要です' }` (HTTP 401)
 
 ### テナント分離

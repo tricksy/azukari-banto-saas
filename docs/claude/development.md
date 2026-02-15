@@ -75,11 +75,15 @@ src/
 │   ├── admin/                  # 管理者用画面
 │   │   ├── (auth)/             # 認証グループ（サイドバーなし）
 │   │   └── (dashboard)/        # ダッシュボードグループ（サイドバー付き）
+│   │       └── tenants/        # テナント管理
 │   ├── api/                    # API Routes
 │   │   ├── auth/               # 認証API
+│   │   │   ├── admin/          # 管理者OAuth認証
 │   │   │   ├── worker/         # 担当者PIN認証
 │   │   │   │   └── remember/   # 記憶トークン認証
 │   │   │   └── logout/         # ログアウト
+│   │   ├── admin/              # 管理者API
+│   │   │   └── tenants/        # テナント管理API
 │   │   └── tenant/             # テナント情報
 │   ├── login/                  # ログインページ
 │   ├── globals.css             # 侘寂デザインシステム
@@ -92,6 +96,7 @@ src/
 │   ├── usePersistedState.ts    # ローカルストレージ永続化フック
 │   └── useFocusTrap.ts         # フォーカストラップフック
 ├── lib/
+│   ├── admin-path.ts           # 管理者パス生成ユーティリティ（URL難読化対応）
 │   ├── auth.ts                 # セッション管理（JWT署名付き）
 │   ├── date.ts                 # 日付ユーティリティ（JST対応）
 │   ├── rate-limit.ts           # レート制限
