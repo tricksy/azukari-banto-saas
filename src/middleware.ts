@@ -4,6 +4,7 @@
  * 1. テナント解決（サブドメイン or ヘッダー）
  * 2. 認証ガード（JWT署名検証）
  * 3. テナント情報をリクエストヘッダーに付与
+ * 4. admin/workerルート分離
  */
 
 import { NextResponse } from 'next/server';
@@ -13,7 +14,7 @@ import { jwtVerify } from 'jose';
 const SESSION_COOKIE_NAME = 'kuratsugi_session';
 
 // 認証不要のパス
-const PUBLIC_PATHS = ['/login', '/api/auth/', '/api/tenant'];
+const PUBLIC_PATHS = ['/login', '/admin/login', '/api/auth/', '/api/tenant'];
 
 /**
  * テナントslugをリクエストから解決
@@ -36,7 +37,7 @@ function resolveTenantSlug(request: NextRequest): string | null {
  */
 async function verifySession(
   token: string
-): Promise<{ valid: boolean; tenantSlug?: string }> {
+): Promise<{ valid: boolean; tenantSlug?: string; role?: string }> {
   try {
     const authSecret = process.env.AUTH_SECRET;
     if (!authSecret) {
@@ -57,6 +58,7 @@ async function verifySession(
     return {
       valid: true,
       tenantSlug: payload.tenantSlug as string,
+      role: payload.role as string,
     };
   } catch (error) {
     console.warn('[Middleware] Session verification failed:', error);
@@ -79,10 +81,33 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // API認証チェック
-  if (pathname.startsWith('/api/')) {
-    const session = request.cookies.get(SESSION_COOKIE_NAME);
+  // セッション取得
+  const session = request.cookies.get(SESSION_COOKIE_NAME);
 
+  // --- 管理者ルート ---
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    if (!session?.value) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+      }
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+
+    const result = await verifySession(session.value);
+    if (!result.valid || result.role !== 'admin') {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: '管理者権限が必要です' }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL('/admin/login', request.url));
+    }
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-pathname', pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  // --- API認証チェック（worker） ---
+  if (pathname.startsWith('/api/')) {
     if (!session?.value) {
       return NextResponse.json(
         { error: '認証が必要です' },
@@ -98,6 +123,14 @@ export async function middleware(request: NextRequest) {
       );
     }
 
+    // adminセッションでworker APIへのアクセスを防止
+    if (result.role === 'admin') {
+      return NextResponse.json(
+        { error: '担当者としてログインしてください' },
+        { status: 403 }
+      );
+    }
+
     const response = NextResponse.next();
     if (tenantSlug) {
       response.headers.set('x-tenant-slug', tenantSlug);
@@ -105,9 +138,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // ページ認証チェック
-  const session = request.cookies.get(SESSION_COOKIE_NAME);
-
+  // --- ページ認証チェック（worker） ---
   if (!session?.value) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
@@ -116,6 +147,11 @@ export async function middleware(request: NextRequest) {
   if (!result.valid) {
     console.warn('[Middleware] Invalid session, redirecting to login');
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // adminセッションでworkerページへのアクセスを防止
+  if (result.role === 'admin') {
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
   }
 
   // テナント情報をリクエストヘッダーに付与

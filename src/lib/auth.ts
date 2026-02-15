@@ -12,6 +12,9 @@ import crypto from 'crypto';
 
 const SESSION_COOKIE_NAME = 'kuratsugi_session';
 const SESSION_MAX_AGE = 60 * 60 * 8; // 8時間
+
+export const PLATFORM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
+export const PLATFORM_TENANT_SLUG = '__platform__';
 const REMEMBER_TOKEN_MAX_AGE = 60 * 60 * 24 * 30; // 30日間
 const JWT_ALG = 'HS256';
 

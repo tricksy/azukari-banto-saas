@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 
 export const metadata: Metadata = {
@@ -7,11 +9,17 @@ export const metadata: Metadata = {
   robots: 'noindex, nofollow',
 };
 
-export default function AdminDashboardLayout({
+export default async function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getSession();
+
+  if (!session || session.role !== 'admin') {
+    redirect('/admin/login');
+  }
+
   return (
     <div className="min-h-screen flex bg-gofun">
       <AdminSidebar />
