@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import type { ItemStatus } from '@/types';
+import { ItemCard } from '@/components/worker/ItemCard';
+import { ItemDetailModal } from '@/components/worker/ItemDetailModal';
 
 interface Stats {
   received: number;
@@ -10,6 +13,22 @@ interface Stats {
   returned: number;
   paidStorage: number;
   claimActive: number;
+}
+
+interface DraftItem {
+  item_number: string;
+  reception_number?: string;
+  customer_name?: string;
+  customer_name_kana?: string;
+  partner_name?: string;
+  product_type: string;
+  product_name: string;
+  status: ItemStatus;
+  is_claim_active?: boolean;
+  photo_front_url?: string;
+  created_at: string;
+  scheduled_ship_date?: string;
+  scheduled_return_date?: string;
 }
 
 export default function WorkerDashboardPage() {
@@ -21,20 +40,53 @@ export default function WorkerDashboardPage() {
     paidStorage: 0,
     claimActive: 0,
   });
+  const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedItemNumber, setSelectedItemNumber] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const statuses: ItemStatus[] = ['received', 'pending_ship', 'processing', 'returned', 'paid_storage'];
+
+      const [statusResults, draftResult] = await Promise.all([
+        Promise.all(
+          statuses.map((s) =>
+            fetch(`/api/items?status=${s}&limit=1`)
+              .then((r) => r.json())
+              .then((data) => ({ status: s, total: data.total ?? 0 }))
+              .catch(() => ({ status: s, total: 0 }))
+          )
+        ),
+        fetch('/api/items?status=draft&limit=20')
+          .then((r) => r.json())
+          .catch(() => ({ items: [], total: 0 })),
+      ]);
+
+      const statsMap: Record<string, number> = {};
+      for (const r of statusResults) {
+        statsMap[r.status] = r.total;
+      }
+
+      setStats({
+        received: statsMap['received'] || 0,
+        pendingShip: statsMap['pending_ship'] || 0,
+        processing: statsMap['processing'] || 0,
+        returned: statsMap['returned'] || 0,
+        paidStorage: statsMap['paid_storage'] || 0,
+        claimActive: 0,
+      });
+
+      setDraftItems(draftResult.items || []);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // TODO: Supabase APIからデータ取得
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-        setIsLoading(false);
-      }
-    };
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   if (isLoading) {
     return (
@@ -59,7 +111,7 @@ export default function WorkerDashboardPage() {
   ];
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 pb-24">
       <h2 className="text-xl font-mincho text-sumi">ダッシュボード</h2>
 
       {/* ステータス概要 */}
@@ -76,6 +128,33 @@ export default function WorkerDashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* 顧客未設定の商品 */}
+      {draftItems.length > 0 && (
+        <div>
+          <h3 className="text-sm font-mincho text-sumi mb-3">
+            顧客未設定の商品
+            <span className="ml-2 text-xs text-ginnezumi font-sans">
+              {draftItems.length}件
+            </span>
+          </h3>
+          <div className="space-y-2">
+            {draftItems.map((item) => (
+              <ItemCard
+                key={item.item_number}
+                item={item}
+                onClick={() => setSelectedItemNumber(item.item_number)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 商品詳細モーダル */}
+      <ItemDetailModal
+        itemNumber={selectedItemNumber}
+        onClose={() => setSelectedItemNumber(null)}
+      />
 
       {/* クイックアクション */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-usuzumi/20 p-3 z-40">

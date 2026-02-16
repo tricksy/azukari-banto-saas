@@ -1,28 +1,19 @@
-'use client';
-
-import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
+import { ReceptionWizard } from '@/components/reception/ReceptionWizard';
 
-function ReceptionContent() {
-  const searchParams = useSearchParams();
-  const isDraft = searchParams.get('draft') === 'true';
+async function ReceptionContent() {
+  const session = await getSession();
+
+  if (!session) {
+    redirect('/login');
+  }
 
   return (
     <div className="p-4">
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-xl font-mincho text-sumi mb-6">
-          {isDraft ? '顧客紐づけ' : '預かり受付'}
-        </h2>
-
-        {/* TODO: ReceptionWizardコンポーネントの実装 */}
-        <div className="card">
-          <div className="card-body text-center py-12">
-            <p className="text-aitetsu">受付ウィザードは準備中です</p>
-            <p className="text-sm text-ginnezumi mt-2">
-              取引先選択 → 顧客選択 → 商品情報入力 → 写真撮影 → 確認
-            </p>
-          </div>
-        </div>
+        <ReceptionWizard workerId={session.workerId} />
       </div>
     </div>
   );
