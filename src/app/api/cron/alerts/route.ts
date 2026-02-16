@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
           .from('tenant_settings')
           .select('key, value')
           .eq('tenant_id', tenant.id)
-          .in('key', ['alertEmailEnabled', 'alertEmail']);
+          .in('key', ['alertEmailEnabled', 'alertEmail', 'resendApiKey', 'emailFrom']);
 
         const settingsMap: Record<string, string> = {};
         for (const s of settings || []) {
@@ -80,9 +80,18 @@ export async function GET(request: NextRequest) {
 
         console.log(`[cron/alerts] ${tenant.name}: ${alertItems.length}件のアラート検出`);
 
+        // テナント固有 or グローバルの Resend APIキーを使用
+        const emailOptions: { apiKey?: string; from?: string } = {};
+        if (settingsMap.resendApiKey) {
+          emailOptions.apiKey = settingsMap.resendApiKey;
+        }
+        if (settingsMap.emailFrom) {
+          emailOptions.from = settingsMap.emailFrom;
+        }
+
         // アラートメール送信
         const subject = `【預かり番頭】${tenant.name} — ${alertItems.length}件の確認が必要です`;
-        const result = await sendAlertEmail(alertEmail, subject, alertItems, tenant.name);
+        const result = await sendAlertEmail(alertEmail, subject, alertItems, tenant.name, emailOptions);
 
         results.push({
           tenant: tenant.slug,

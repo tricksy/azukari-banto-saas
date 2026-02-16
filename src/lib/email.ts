@@ -21,10 +21,11 @@ interface SendEmailResult {
 export async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  options?: { apiKey?: string; from?: string }
 ): Promise<SendEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'noreply@azukaribanto.com';
+  const apiKey = options?.apiKey || process.env.RESEND_API_KEY;
+  const from = options?.from || process.env.EMAIL_FROM || 'noreply@azukaribanto.com';
 
   if (!apiKey) {
     console.warn('[email] RESEND_API_KEY が未設定のため、メール送信をスキップしました');
@@ -105,7 +106,8 @@ export async function sendAlertEmail(
   to: string,
   subject: string,
   items: AlertItem[],
-  storeName: string
+  storeName: string,
+  options?: { apiKey?: string; from?: string }
 ): Promise<SendEmailResult> {
   const rows = items
     .map(
@@ -154,5 +156,5 @@ export async function sendAlertEmail(
 </body>
 </html>`.trim();
 
-  return sendEmail(to, subject, html);
+  return sendEmail(to, subject, html, options);
 }
