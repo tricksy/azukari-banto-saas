@@ -122,16 +122,17 @@ export default function AdminManualPage() {
               </thead>
               <tbody className="divide-y divide-usuzumi/10">
                 <tr><td className="px-3 py-2 font-medium text-sumi">ダッシュボード</td><td className="px-3 py-2 text-ginnezumi">アラート・ワークフロー進捗・統計情報の一覧</td></tr>
-                <tr><td className="px-3 py-2 font-medium text-sumi">商品一覧</td><td className="px-3 py-2 text-ginnezumi">全商品の検索・フィルタ・詳細確認・ステータス変更</td></tr>
                 <tr><td className="px-3 py-2 font-medium text-sumi">ステータス一覧</td><td className="px-3 py-2 text-ginnezumi">ステータスの種類と遷移フローの確認（リファレンス）</td></tr>
+                <tr><td className="px-3 py-2 font-medium text-sumi">クレーム管理</td><td className="px-3 py-2 text-ginnezumi">クレーム一覧・対応ログ・解決管理</td></tr>
+                <tr><td className="px-3 py-2 font-medium text-sumi">有料預かり管理</td><td className="px-3 py-2 text-ginnezumi">有料預かり商品の確認・管理</td></tr>
                 <tr><td className="px-3 py-2 font-medium text-sumi">取引先管理</td><td className="px-3 py-2 text-ginnezumi">取引先（社内・社外）の登録・編集</td></tr>
                 <tr><td className="px-3 py-2 font-medium text-sumi">業者管理</td><td className="px-3 py-2 text-ginnezumi">加工業者の登録・住所管理・有効/無効切替</td></tr>
                 <tr><td className="px-3 py-2 font-medium text-sumi">顧客管理</td><td className="px-3 py-2 text-ginnezumi">顧客情報の登録・編集</td></tr>
                 <tr><td className="px-3 py-2 font-medium text-sumi">担当者管理</td><td className="px-3 py-2 text-ginnezumi">担当者ID・PIN・メール設定</td></tr>
-                <tr><td className="px-3 py-2 font-medium text-sumi">クレーム管理</td><td className="px-3 py-2 text-ginnezumi">クレーム一覧・対応ログ・解決管理</td></tr>
-                <tr><td className="px-3 py-2 font-medium text-sumi">有料預かり管理</td><td className="px-3 py-2 text-ginnezumi">有料預かり商品の確認・管理</td></tr>
+                <tr><td className="px-3 py-2 font-medium text-sumi">テナント管理</td><td className="px-3 py-2 text-ginnezumi">テナント（店舗）の一覧・新規作成・分離URL設定</td></tr>
                 <tr><td className="px-3 py-2 font-medium text-sumi">操作ログ</td><td className="px-3 py-2 text-ginnezumi">操作履歴・ログイン履歴の確認</td></tr>
-                <tr><td className="px-3 py-2 font-medium text-sumi">メール送信ログ</td><td className="px-3 py-2 text-ginnezumi">アラートメールの送信履歴確認</td></tr>
+                <tr><td className="px-3 py-2 font-medium text-sumi">メール送信履歴</td><td className="px-3 py-2 text-ginnezumi">アラートメールの送信履歴確認</td></tr>
+                <tr><td className="px-3 py-2 font-medium text-sumi">使い方マニュアル</td><td className="px-3 py-2 text-ginnezumi">このページ（管理者向け操作ガイド）</td></tr>
                 <tr><td className="px-3 py-2 font-medium text-sumi">システム設定</td><td className="px-3 py-2 text-ginnezumi">アラート・期限・メール・自動アーカイブの設定</td></tr>
               </tbody>
             </table>
@@ -337,13 +338,71 @@ export default function AdminManualPage() {
           </div>
         </section>
 
-        {/* 4. クレーム管理 */}
+        {/* 4. テナント管理 */}
+        <section className="card p-4 bg-kinari border-2 border-oitake">
+          <h2 className="font-medium text-lg text-sumi mb-4 flex items-center gap-2">
+            <span className="bg-oitake text-white text-xs px-3 py-1 rounded">4</span>
+            テナント管理
+          </h2>
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg p-4">
+              <div className="text-sm text-ginnezumi space-y-2">
+                <p>テナント（店舗）の管理を行います。各テナントには4桁の16進数ID（例: A3F0）が割り当てられます。</p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <div className="text-sm font-medium text-aitetsu mb-3 border-l-4 border-oitake pl-2">テナント一覧</div>
+              <div className="text-sm text-ginnezumi space-y-2">
+                <p>登録されている全テナントの情報を一覧で確認できます。</p>
+                <div className="bg-shironeri rounded p-3">
+                  <p className="font-medium text-sumi mb-1">表示項目：</p>
+                  <ul className="text-ginnezumi space-y-1 list-disc list-inside">
+                    <li><span className="font-medium text-sumi">テナントID</span>：4桁の16進数コード</li>
+                    <li><span className="font-medium text-sumi">店舗名</span></li>
+                    <li><span className="font-medium text-sumi">プラン</span>：free / standard / premium</li>
+                    <li><span className="font-medium text-sumi">ステータス</span>：有効 / 停止中 / 解約済</li>
+                    <li><span className="font-medium text-sumi">分離状態</span>：SaaS（共有）または分離済み（専用URL）</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <div className="text-sm font-medium text-aitetsu mb-3 border-l-4 border-shu pl-2">新規テナント作成</div>
+              <div className="text-sm text-ginnezumi space-y-2">
+                <p>「+ 新規テナント」ボタンから新しい店舗を登録できます。</p>
+                <div className="bg-shironeri rounded p-3">
+                  <p className="font-medium text-sumi mb-1">入力項目：</p>
+                  <ul className="text-ginnezumi space-y-1 list-disc list-inside">
+                    <li><span className="font-medium text-sumi">店舗名</span>（必須）</li>
+                    <li><span className="font-medium text-sumi">テナントID</span>（必須）：4桁の16進数（0-9, A-F）</li>
+                    <li><span className="font-medium text-sumi">プラン</span>：free / standard / premium（デフォルト: free）</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4">
+              <div className="text-sm font-medium text-aitetsu mb-3 border-l-4 border-oudo pl-2">分離URL設定</div>
+              <div className="text-sm text-ginnezumi space-y-2">
+                <p>各テナントの「編集」ボタンから、分離先URLを設定できます。</p>
+                <div className="bg-shironeri rounded p-3">
+                  <p className="font-medium text-sumi mb-1">分離URLとは：</p>
+                  <p className="text-ginnezumi">テナントを専用ドメインに分離する際のリダイレクト先URLです。設定するとそのテナントへのアクセスは専用URLにリダイレクトされます。URLをクリアするとSaaS（共有）に戻ります。</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. クレーム管理 */}
         <section className="card p-4 bg-kinari border-2 border-kokiake">
           <h2 className="font-medium text-lg text-sumi mb-4 flex items-center gap-2">
             <span className="w-8 h-8 flex items-center justify-center bg-kokiake text-white rounded-full">
               {icons.exclamation('w-5 h-5')}
             </span>
-            4. クレーム管理
+            5. クレーム管理
           </h2>
 
           <div className="space-y-4">
@@ -390,10 +449,10 @@ export default function AdminManualPage() {
           </div>
         </section>
 
-        {/* 5. 有料預かり管理 */}
+        {/* 6. 有料預かり管理 */}
         <section className="card p-4">
           <h2 className="font-medium text-lg text-sumi mb-4 flex items-center gap-2">
-            <span className="bg-kin text-white text-xs px-3 py-1 rounded">5</span>
+            <span className="bg-kin text-white text-xs px-3 py-1 rounded">6</span>
             有料預かり管理
           </h2>
           <div className="space-y-3 text-sm text-ginnezumi">
@@ -412,10 +471,10 @@ export default function AdminManualPage() {
           </div>
         </section>
 
-        {/* 6. 操作ログ */}
+        {/* 7. 操作ログ */}
         <section className="card p-4">
           <h2 className="font-medium text-lg text-sumi mb-4 flex items-center gap-2">
-            <span className="bg-aitetsu text-white text-xs px-3 py-1 rounded">6</span>
+            <span className="bg-aitetsu text-white text-xs px-3 py-1 rounded">7</span>
             操作ログ
           </h2>
           <div className="space-y-3 text-sm text-ginnezumi">
@@ -440,13 +499,13 @@ export default function AdminManualPage() {
           </div>
         </section>
 
-        {/* 7. メール送信ログ */}
+        {/* 8. メール送信履歴 */}
         <section className="card p-4">
           <h2 className="font-medium text-lg text-sumi mb-4 flex items-center gap-2">
             <span className="w-8 h-8 flex items-center justify-center bg-oitake text-white rounded-full">
               {icons.envelope('w-5 h-5')}
             </span>
-            7. メール送信ログ
+            8. メール送信履歴
           </h2>
           <div className="space-y-3 text-sm text-ginnezumi">
             <p>システムが自動送信したアラートメールの履歴を確認できます。</p>
@@ -464,13 +523,13 @@ export default function AdminManualPage() {
           </div>
         </section>
 
-        {/* 8. システム設定 */}
+        {/* 9. システム設定 */}
         <section className="card p-4 bg-kinari border-2 border-oudo">
           <h2 className="font-medium text-lg text-sumi mb-4 flex items-center gap-2">
             <span className="w-8 h-8 flex items-center justify-center bg-oudo text-white rounded-full">
               {icons.cog('w-5 h-5')}
             </span>
-            8. システム設定
+            9. システム設定
           </h2>
 
           <div className="space-y-4">

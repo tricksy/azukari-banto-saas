@@ -101,7 +101,7 @@ export function AdminSidebar() {
 
           <Link href={adminPath('/dashboard')}>
             <h1 className="text-lg font-mincho text-[hsl(43,60%,65%)] hover:text-[hsl(43,60%,75%)] transition-colors">
-              預かり番頭
+              預かり番頭β
             </h1>
           </Link>
         </div>
