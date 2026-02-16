@@ -1,0 +1,93 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { getSessionFromRequest } from '@/lib/auth';
+
+/**
+ * テナント設定取得（管理者API）
+ * GET /api/admin/settings
+ */
+export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
+  const supabase = createServiceClient();
+
+  const { data: rows, error } = await supabase
+    .from('tenant_settings')
+    .select('key, value')
+    .eq('tenant_id', session.tenantId);
+
+  if (error) {
+    return NextResponse.json({ error: '設定の取得に失敗しました' }, { status: 500 });
+  }
+
+  const settings: Record<string, string> = {};
+  for (const row of rows || []) {
+    settings[row.key] = row.value;
+  }
+
+  return NextResponse.json({ settings });
+}
+
+/** 保存可能な設定キー */
+const ALLOWED_KEYS = [
+  'alertEmailEnabled',
+  'alertEmail',
+  'resendApiKey',
+  'emailFrom',
+  'shipDeadlineDays',
+  'returnDeadlineDays',
+  'stagnationThresholdDays',
+  'autoArchiveDays',
+  'paidStorageGraceDays',
+];
+
+/**
+ * テナント設定保存（管理者API）
+ * PUT /api/admin/settings
+ * Body: { settings: Record<string, string> }
+ */
+export async function PUT(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const incoming = body.settings as Record<string, string> | undefined;
+
+  if (!incoming || typeof incoming !== 'object') {
+    return NextResponse.json({ error: '設定データが不正です' }, { status: 400 });
+  }
+
+  const supabase = createServiceClient();
+  const errors: string[] = [];
+
+  for (const [key, value] of Object.entries(incoming)) {
+    if (!ALLOWED_KEYS.includes(key)) {
+      continue;
+    }
+
+    const { error } = await supabase
+      .from('tenant_settings')
+      .upsert(
+        { tenant_id: session.tenantId, key, value: String(value) },
+        { onConflict: 'tenant_id,key' }
+      );
+
+    if (error) {
+      errors.push(`${key}: ${error.message}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    return NextResponse.json(
+      { error: '一部の設定の保存に失敗しました', details: errors },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ success: true });
+}

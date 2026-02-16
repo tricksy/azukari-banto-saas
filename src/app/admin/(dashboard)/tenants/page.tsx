@@ -27,6 +27,17 @@ export default function AdminTenantsPage() {
   const [createError, setCreateError] = useState('');
   const [statusTarget, setStatusTarget] = useState<Tenant | null>(null);
   const [isStatusChanging, setIsStatusChanging] = useState(false);
+  const [settingsTenant, setSettingsTenant] = useState<Tenant | null>(null);
+  const [tenantSettings, setTenantSettings] = useState({
+    resendApiKey: '',
+    emailFrom: '',
+    alertEmailEnabled: false,
+    alertEmail: '',
+  });
+  const [isSettingsLoading, setIsSettingsLoading] = useState(false);
+  const [isSettingsSaving, setIsSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,6 +153,59 @@ export default function AdminTenantsPage() {
     );
   };
 
+  const handleSettingsOpen = async (tenant: Tenant) => {
+    setSettingsTenant(tenant);
+    setIsSettingsLoading(true);
+    setSettingsMessage(null);
+    setShowApiKey(false);
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenant.id}/settings`);
+      if (!res.ok) throw new Error('取得失敗');
+      const data = await res.json();
+      const s = data.settings || {};
+      setTenantSettings({
+        resendApiKey: s.resendApiKey || '',
+        emailFrom: s.emailFrom || '',
+        alertEmailEnabled: s.alertEmailEnabled === 'true',
+        alertEmail: s.alertEmail || '',
+      });
+    } catch {
+      setSettingsMessage({ type: 'error', text: '設定の取得に失敗しました' });
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
+
+  const handleSettingsSave = async () => {
+    if (!settingsTenant) return;
+    setIsSettingsSaving(true);
+    setSettingsMessage(null);
+    try {
+      const res = await fetch(`/api/admin/tenants/${settingsTenant.id}/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: {
+            resendApiKey: tenantSettings.resendApiKey,
+            emailFrom: tenantSettings.emailFrom,
+            alertEmailEnabled: String(tenantSettings.alertEmailEnabled),
+            alertEmail: tenantSettings.alertEmail,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '保存失敗');
+      }
+      setSettingsMessage({ type: 'success', text: '設定を保存しました' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '保存に失敗しました';
+      setSettingsMessage({ type: 'error', text: msg });
+    } finally {
+      setIsSettingsSaving(false);
+    }
+  };
+
   const handleStatusToggle = async () => {
     if (!statusTarget) return;
     const newStatus = statusTarget.status === 'active' ? 'suspended' : 'active';
@@ -255,6 +319,12 @@ export default function AdminTenantsPage() {
                             onClick={() => handleEdit(tenant)}
                           >
                             編集
+                          </button>
+                          <button
+                            className="btn-secondary text-xs"
+                            onClick={() => handleSettingsOpen(tenant)}
+                          >
+                            設定
                           </button>
                           {tenant.status !== 'cancelled' && (
                             <button
@@ -415,6 +485,106 @@ export default function AdminTenantsPage() {
         variant={statusTarget?.status === 'active' ? 'warning' : 'default'}
         isLoading={isStatusChanging}
       />
+      <Modal
+        isOpen={settingsTenant !== null}
+        onClose={() => setSettingsTenant(null)}
+        title={`メール設定 — ${settingsTenant?.name || ''}`}
+      >
+        {settingsTenant && (
+          <div className="space-y-4">
+            {settingsMessage && (
+              <div className={`p-3 text-sm ${settingsMessage.type === 'success' ? 'bg-oitake/10 text-oitake' : 'bg-kokiake/10 text-kokiake'}`}>
+                {settingsMessage.text}
+              </div>
+            )}
+            {isSettingsLoading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-12 bg-shironeri animate-pulse rounded" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-ginnezumi">
+                  Resend（resend.com）のAPIキーを設定すると、このテナントのアラートメールが有効になります。
+                  無料枠（月3,000通）で運用できます。
+                </p>
+                <div>
+                  <label className="text-xs text-aitetsu block mb-1">Resend APIキー</label>
+                  <div className="flex gap-2">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={tenantSettings.resendApiKey}
+                      onChange={(e) => setTenantSettings({ ...tenantSettings, resendApiKey: e.target.value })}
+                      className="form-input flex-1"
+                      placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="btn-ghost btn-sm whitespace-nowrap"
+                    >
+                      {showApiKey ? '隠す' : '表示'}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-aitetsu block mb-1">送信元メールアドレス</label>
+                  <input
+                    type="email"
+                    value={tenantSettings.emailFrom}
+                    onChange={(e) => setTenantSettings({ ...tenantSettings, emailFrom: e.target.value })}
+                    className="form-input w-full"
+                    placeholder="noreply@your-domain.com"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-aitetsu">アラートメール送信</label>
+                  <button
+                    type="button"
+                    onClick={() => setTenantSettings({ ...tenantSettings, alertEmailEnabled: !tenantSettings.alertEmailEnabled })}
+                    className={`relative inline-flex h-6 w-11 items-center transition-colors ${
+                      tenantSettings.alertEmailEnabled ? 'bg-oitake' : 'bg-usuzumi/30'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 bg-white transition-transform ${
+                        tenantSettings.alertEmailEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div>
+                  <label className="text-xs text-aitetsu block mb-1">通知先メールアドレス</label>
+                  <input
+                    type="email"
+                    value={tenantSettings.alertEmail}
+                    onChange={(e) => setTenantSettings({ ...tenantSettings, alertEmail: e.target.value })}
+                    className="form-input w-full"
+                    placeholder="alert@example.com"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-2">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => setSettingsTenant(null)}
+                    disabled={isSettingsSaving}
+                  >
+                    閉じる
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={handleSettingsSave}
+                    disabled={isSettingsSaving}
+                  >
+                    {isSettingsSaving ? '保存中...' : '保存'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
