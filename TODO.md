@@ -78,17 +78,18 @@
 - [x] `src/components/worker/ClaimDetailModal.tsx`
 - [x] `yarn typecheck` 通過
 
-## Phase 7: 印刷ページ ⬜ 未着手
+## Phase 7: 印刷ページ ✅ 完了
 
-- [ ] `src/app/(worker)/print/layout.tsx` — 印刷用レイアウト
-- [ ] `src/app/(worker)/print/processing-order/[receptionNumber]/page.tsx` — 加工指示書
-- [ ] `yarn typecheck` 通過
+- [x] `src/app/(worker)/print/layout.tsx` — 印刷用レイアウト
+- [x] `src/app/(worker)/print/processing-order/[receptionNumber]/page.tsx` — 加工指示書
+- [x] `src/app/(worker)/print/processing-order/[receptionNumber]/PrintActions.tsx` — 印刷アクション
+- [x] `yarn typecheck` 通過
 
-## Phase 8: Cron Jobs + メール通知 ⬜ 未着手
+## Phase 8: Cron Jobs + メール通知 ✅ 完了
 
-- [ ] `src/app/api/cron/alerts/route.ts` — 日次アラートメール
-- [ ] `src/app/api/cron/archive-items/route.ts` — 週次アーカイブ
-- [ ] `src/lib/email.ts` — メール送信ユーティリティ
-- [ ] `vercel.json` — Cronスケジュール設定
-- [ ] メールサービス選定・設定
-- [ ] `yarn typecheck` 通過
+- [x] `src/app/api/cron/alerts/route.ts` — 日次アラートメール
+- [x] `src/app/api/cron/archive-items/route.ts` — 週次アーカイブ
+- [x] `src/lib/email.ts` — メール送信ユーティリティ（Resend）
+- [x] `vercel.json` — Cronスケジュール設定
+- [ ] メールサービス設定（デプロイ時にRESEND_API_KEY設定）
+- [x] `yarn typecheck` 通過
