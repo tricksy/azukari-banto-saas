@@ -131,3 +131,73 @@ export async function PUT(request: NextRequest) {
 
   return NextResponse.json({ success: true, tenant });
 }
+
+/**
+ * テナントステータス変更（管理者API）
+ * PATCH /api/admin/tenants
+ * Body: { id: string, status: 'active' | 'suspended' }
+ */
+export async function PATCH(request: NextRequest) {
+  const body = await request.json();
+  const { id, status } = body;
+
+  if (!id || !status) {
+    return NextResponse.json(
+      { error: 'id と status は必須です' },
+      { status: 400 }
+    );
+  }
+
+  if (status !== 'active' && status !== 'suspended') {
+    return NextResponse.json(
+      { error: 'status は active または suspended のみ指定できます' },
+      { status: 400 }
+    );
+  }
+
+  const supabase = createServiceClient();
+
+  // 現在のテナント取得
+  const { data: current, error: fetchError } = await supabase
+    .from('tenants')
+    .select('id, status')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !current) {
+    return NextResponse.json(
+      { error: 'テナントが見つかりません' },
+      { status: 404 }
+    );
+  }
+
+  if (current.status === 'cancelled') {
+    return NextResponse.json(
+      { error: '解約済みテナントのステータスは変更できません' },
+      { status: 400 }
+    );
+  }
+
+  if (current.status === status) {
+    return NextResponse.json(
+      { error: '既に同じステータスです' },
+      { status: 400 }
+    );
+  }
+
+  const { data: tenant, error } = await supabase
+    .from('tenants')
+    .update({ status })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json(
+      { error: 'ステータスの変更に失敗しました' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ success: true, tenant });
+}

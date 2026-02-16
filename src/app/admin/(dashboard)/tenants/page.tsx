@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal } from '@/components/ui/Modal';
+import { Modal, ConfirmModal } from '@/components/ui/Modal';
 
 interface Tenant {
   id: string;
@@ -24,6 +24,8 @@ export default function AdminTenantsPage() {
   const [newSlug, setNewSlug] = useState('');
   const [newPlan, setNewPlan] = useState<'free' | 'standard' | 'premium'>('free');
   const [createError, setCreateError] = useState('');
+  const [statusTarget, setStatusTarget] = useState<Tenant | null>(null);
+  const [isStatusChanging, setIsStatusChanging] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -137,6 +139,33 @@ export default function AdminTenantsPage() {
     );
   };
 
+  const handleStatusToggle = async () => {
+    if (!statusTarget) return;
+    const newStatus = statusTarget.status === 'active' ? 'suspended' : 'active';
+    setIsStatusChanging(true);
+    try {
+      const res = await fetch('/api/admin/tenants', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: statusTarget.id, status: newStatus }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || 'ステータスの変更に失敗しました');
+      }
+      setTenants((prev) =>
+        prev.map((t) =>
+          t.id === statusTarget.id ? { ...t, status: newStatus } : t
+        )
+      );
+      setStatusTarget(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'ステータスの変更に失敗しました');
+    } finally {
+      setIsStatusChanging(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -217,12 +246,26 @@ export default function AdminTenantsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          className="btn-secondary text-xs"
-                          onClick={() => handleEdit(tenant)}
-                        >
-                          編集
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            className="btn-secondary text-xs"
+                            onClick={() => handleEdit(tenant)}
+                          >
+                            編集
+                          </button>
+                          {tenant.status !== 'cancelled' && (
+                            <button
+                              className={`text-xs px-3 py-1.5 rounded ${
+                                tenant.status === 'active'
+                                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+                              }`}
+                              onClick={() => setStatusTarget(tenant)}
+                            >
+                              {tenant.status === 'active' ? '停止' : '有効化'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -354,6 +397,20 @@ export default function AdminTenantsPage() {
           </div>
         </div>
       </Modal>
+      <ConfirmModal
+        isOpen={statusTarget !== null}
+        onClose={() => setStatusTarget(null)}
+        onConfirm={handleStatusToggle}
+        title={statusTarget?.status === 'active' ? 'テナント停止' : 'テナント有効化'}
+        message={
+          statusTarget?.status === 'active'
+            ? `「${statusTarget.name}」を停止しますか？担当者がログインできなくなります。`
+            : `「${statusTarget?.name}」を有効化しますか？担当者がログインできるようになります。`
+        }
+        confirmText={statusTarget?.status === 'active' ? '停止する' : '有効化する'}
+        variant={statusTarget?.status === 'active' ? 'warning' : 'default'}
+        isLoading={isStatusChanging}
+      />
     </div>
   );
 }
