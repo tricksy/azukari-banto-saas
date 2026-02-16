@@ -169,7 +169,7 @@
 | -------------- | -------- | ---- |
 | /api/admin/tenants | GET | テナント一覧取得 |
 | /api/admin/tenants | POST | テナント新規作成 |
-| /api/admin/tenants | PATCH | テナント情報更新 |
+| /api/admin/tenants | PUT | テナント分離URL更新 |
 
 ### GET /api/admin/tenants
 
@@ -200,52 +200,50 @@
 {
   "name": "新規店舗",
   "slug": "C4D5",
-  "status": "active",
-  "settings": {}
+  "plan": "free"
 }
 ```
 
 | フィールド | 必須 | 説明 |
 | ---------- | ---- | ---- |
 | name | ○ | 店舗名 |
-| slug | ○ | テナントID（4桁16進数） |
-| status | - | テナント状態（デフォルト: active） |
-| settings | - | テナント設定（JSON） |
+| slug | ○ | テナントID（4桁16進数: 0-9, A-F） |
+| plan | - | プラン（free/standard/premium、デフォルト: free） |
+
+**エラーレスポンス:**
+- `400` — バリデーションエラー（テナントIDが4桁hexでない等）
+- `409` — テナントIDが既に使用されている
 
 **成功レスポンス (201):**
 ```json
 {
-  "tenant": { "id": "uuid", "name": "新規店舗", "slug": "C4D5", "status": "active" }
+  "success": true,
+  "tenant": { "id": "uuid", "name": "新規店舗", "slug": "C4D5", "plan": "free", "status": "active" }
 }
 ```
 
-### PATCH /api/admin/tenants
+### PUT /api/admin/tenants
 
-既存テナントの情報を更新する。管理者認証必須。
+テナントの分離先URLを更新する。管理者認証必須。
 
 **リクエストボディ:**
 ```json
 {
   "id": "uuid",
-  "name": "更新後の店舗名",
-  "slug": "C4D5",
-  "status": "suspended",
-  "settings": {}
+  "redirect_url": "https://example.com"
 }
 ```
 
 | フィールド | 必須 | 説明 |
 | ---------- | ---- | ---- |
 | id | ○ | テナントUUID |
-| name | - | 店舗名 |
-| slug | - | テナントID（4桁16進数） |
-| status | - | テナント状態 |
-| settings | - | テナント設定（JSON） |
+| redirect_url | ○ | 分離先URL（null でSaaSに戻す） |
 
 **成功レスポンス (200):**
 ```json
 {
-  "tenant": { "id": "uuid", "name": "更新後の店舗名", "slug": "C4D5", "status": "suspended" }
+  "success": true,
+  "tenant": { "id": "uuid", "redirect_url": "https://example.com" }
 }
 ```
 
