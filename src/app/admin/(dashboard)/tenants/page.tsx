@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
+import { Pagination, usePagination } from '@/components/ui/Pagination';
 
 interface Tenant {
   id: string;
@@ -42,6 +43,8 @@ export default function AdminTenantsPage() {
     };
     fetchData();
   }, []);
+
+  const { paginatedItems: paginatedTenants, ...pagination } = usePagination(tenants);
 
   const handleEdit = (tenant: Tenant) => {
     setEditingTenant(tenant);
@@ -213,7 +216,7 @@ export default function AdminTenantsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tenants.map((tenant) => (
+                  {paginatedTenants.map((tenant) => (
                     <tr
                       key={tenant.id}
                       className="border-b border-shironeri last:border-b-0"
@@ -271,6 +274,7 @@ export default function AdminTenantsPage() {
                   ))}
                 </tbody>
               </table>
+              <Pagination {...pagination} onPageChange={pagination.setCurrentPage} />
             </div>
           )}
         </div>

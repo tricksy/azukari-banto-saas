@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
+import { Pagination, usePagination } from '@/components/ui/Pagination';
 
 interface WorkerRow {
   id: string;
@@ -86,6 +87,13 @@ export default function AdminWorkersPage() {
     }
     return true;
   });
+
+  const { paginatedItems: paginatedWorkers, resetPage, ...pagination } = usePagination(filteredWorkers);
+
+  useEffect(() => {
+    resetPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterTenant, searchQuery]);
 
   // --- 新規作成 ---
   const handleCreateOpen = () => {
@@ -327,7 +335,7 @@ export default function AdminWorkersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredWorkers.map((worker) => (
+                  {paginatedWorkers.map((worker) => (
                     <tr
                       key={worker.id}
                       className="border-b border-shironeri last:border-b-0"
@@ -382,6 +390,7 @@ export default function AdminWorkersPage() {
                   ))}
                 </tbody>
               </table>
+              <Pagination {...pagination} onPageChange={pagination.setCurrentPage} />
             </div>
           )}
         </div>
