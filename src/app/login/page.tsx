@@ -221,7 +221,7 @@ export default function WorkerLoginPage() {
   // 自動ログイン試行中
   if (isAutoLogging) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gofun">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gofun bg-cover bg-center" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.45), rgba(255,255,255,0.45)), url('/azukaribanto.webp')" }}>
         <div
           className="card w-full max-w-sm bg-white/95 backdrop-blur-sm text-center py-12"
           style={{ border: '1px solid rgba(139, 35, 50, 0.5)' }}
@@ -233,7 +233,7 @@ export default function WorkerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gofun">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gofun bg-cover bg-center" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.45), rgba(255,255,255,0.45)), url('/azukaribanto.webp')" }}>
       <div
         className="card w-full max-w-sm bg-white/95 backdrop-blur-sm"
         style={{ border: '1px solid rgba(139, 35, 50, 0.5)' }}
