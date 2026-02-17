@@ -5,7 +5,7 @@
 既存の預かり番頭（KURATSUGI）は1店舗専用のシステム（Google Spreadsheet + Vercel）。これを着物業界の複数店舗が利用できるマルチテナントSaaSとして、別リポジトリで新規開発する。
 
 **規模**: 数十店舗
-**課金**: フリーミアム（無料枠 → 有料、閾値は検討中）
+**課金**: Standard / Premium の2プラン制
 **オンボーディング**: 手動プロビジョニング
 
 ---
@@ -50,7 +50,7 @@ CREATE TABLE tenants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug VARCHAR(63) UNIQUE NOT NULL,        -- サブドメイン用
   name VARCHAR(255) NOT NULL,              -- 店舗名
-  plan VARCHAR(20) DEFAULT 'free',         -- free / standard / premium
+  plan VARCHAR(20) DEFAULT 'standard',      -- standard / premium
   status VARCHAR(20) DEFAULT 'active',     -- active / suspended / cancelled
   settings JSONB DEFAULT '{}',             -- 店舗別設定
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -141,18 +141,20 @@ r2-bucket/
 
 ---
 
-## 7. フリーミアム設計
+## 7. プラン設計
 
-### プラン構成（案）
-| | Free | Standard | Premium |
-|--|------|----------|---------|
-| 預かり品数 | 〜X件 | 〜Y件 | 無制限 |
-| 写真保存容量 | 〜Z GB | 〜W GB | 無制限 |
-| 担当者数 | 〜N人 | 〜M人 | 無制限 |
-| アラートメール | 基本 | カスタム | カスタム |
-| サポート | コミュニティ | メール | 優先 |
+### プラン構成（2プラン制）
+| | Standard | Premium |
+|--|----------|---------|
+| 形態 | 共有SaaS | 専用サーバー分離 |
+| 預かり品数 | 〜Y件 | 無制限 |
+| 写真保存容量 | 〜W GB | 無制限 |
+| 担当者数 | 〜M人 | 無制限 |
+| アラートメール | カスタム | カスタム |
+| サポート | メール | 優先 |
+| redirect_url | なし | 専用サーバーURL |
 
-※閾値は検討中のため、設定変更可能な構造にする
+※Premiumは `redirect_url` を設定して専用サーバーへリダイレクトする運用
 
 ---
 

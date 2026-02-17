@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     .insert({
       name,
       slug: normalizedSlug,
-      plan: plan || 'free',
+      plan: plan || 'standard',
     })
     .select()
     .single();

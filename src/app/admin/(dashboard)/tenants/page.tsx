@@ -8,7 +8,7 @@ interface Tenant {
   id: string;
   slug: string;
   name: string;
-  plan: 'free' | 'standard' | 'premium';
+  plan: 'standard' | 'premium';
   status: 'active' | 'suspended' | 'cancelled';
   redirect_url: string | null;
   created_at: string;
@@ -23,7 +23,7 @@ export default function AdminTenantsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newSlug, setNewSlug] = useState('');
-  const [newPlan, setNewPlan] = useState<'free' | 'standard' | 'premium'>('free');
+  const [newPlan, setNewPlan] = useState<'standard' | 'premium'>('standard');
   const [createError, setCreateError] = useState('');
   const [statusTarget, setStatusTarget] = useState<Tenant | null>(null);
   const [isStatusChanging, setIsStatusChanging] = useState(false);
@@ -102,7 +102,7 @@ export default function AdminTenantsPage() {
     setIsCreateOpen(true);
     setNewName('');
     setNewSlug('');
-    setNewPlan('free');
+    setNewPlan('standard');
     setCreateError('');
   };
 
@@ -443,9 +443,8 @@ export default function AdminTenantsPage() {
             <select
               className="input w-full"
               value={newPlan}
-              onChange={(e) => setNewPlan(e.target.value as 'free' | 'standard' | 'premium')}
+              onChange={(e) => setNewPlan(e.target.value as 'standard' | 'premium')}
             >
-              <option value="free">free</option>
               <option value="standard">standard</option>
               <option value="premium">premium</option>
             </select>
