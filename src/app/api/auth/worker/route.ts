@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
       role: 'worker',
       tenantId: tenant.id,
       tenantSlug,
+      tenantName: tenant.name,
     });
 
     // 記憶トークンを生成

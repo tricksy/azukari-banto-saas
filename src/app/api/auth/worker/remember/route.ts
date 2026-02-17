@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // テナントが有効か確認
     const { data: tenant } = await supabase
       .from('tenants')
-      .select('id, status')
+      .select('id, name, status')
       .eq('id', payload.tenantId)
       .single();
 
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       role: 'worker',
       tenantId: payload.tenantId,
       tenantSlug: payload.tenantSlug,
+      tenantName: tenant.name,
     });
 
     return NextResponse.json({ success: true });

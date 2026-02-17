@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       role: 'admin',
       tenantId: PLATFORM_TENANT_ID,
       tenantSlug: PLATFORM_TENANT_SLUG,
+      tenantName: 'プラットフォーム管理',
     });
 
     return NextResponse.json({

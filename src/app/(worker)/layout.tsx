@@ -24,7 +24,7 @@ export default async function WorkerLayout({
     <div className="min-h-screen bg-gofun">
       <WorkerHeader
         workerName={session?.name}
-        tenantName={session?.tenantSlug}
+        tenantName={session?.tenantName}
       />
       <main>{children}</main>
     </div>

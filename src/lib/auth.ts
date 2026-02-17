@@ -35,6 +35,7 @@ export interface SessionData {
   role: 'worker' | 'admin';
   tenantId: string;
   tenantSlug: string;
+  tenantName: string;
   loginAt: string;
 }
 
@@ -121,6 +122,7 @@ async function verifySessionToken(
       role: payload.role as 'worker' | 'admin',
       tenantId: payload.tenantId as string,
       tenantSlug: payload.tenantSlug as string,
+      tenantName: (payload.tenantName as string) || '',
       loginAt: payload.loginAt as string,
     };
 
