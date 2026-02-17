@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { fileToResizedBlob, createPreviewUrl } from '@/lib/image';
+import { uploadPhoto } from '@/lib/upload-photo';
 import type { ItemStatus } from '@/types';
 
 interface SelectedItem {
@@ -39,8 +41,8 @@ export function ReturnAcceptModal({
   onSuccess,
 }: ReturnAcceptModalProps) {
   const [returnDate, setReturnDate] = useState(getTodayString);
-  const [photoAfterFrontUrl, setPhotoAfterFrontUrl] = useState<string | null>(null);
-  const [photoAfterBackUrl, setPhotoAfterBackUrl] = useState<string | null>(null);
+  const [photoAfterFront, setPhotoAfterFront] = useState<{ blob: Blob; previewUrl: string; mimeType: string } | null>(null);
+  const [photoAfterBack, setPhotoAfterBack] = useState<{ blob: Blob; previewUrl: string; mimeType: string } | null>(null);
   const [isPaidStorage, setIsPaidStorage] = useState(false);
   const [scheduledReturnDate, setScheduledReturnDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -50,20 +52,19 @@ export function ReturnAcceptModal({
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (
+  const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    setter: (url: string | null) => void
+    setter: (data: { blob: Blob; previewUrl: string; mimeType: string } | null) => void
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setter(reader.result as string);
-    };
-    reader.onerror = () => {
+    try {
+      const { blob, mimeType } = await fileToResizedBlob(file);
+      const previewUrl = createPreviewUrl(blob);
+      setter({ blob, previewUrl, mimeType });
+    } catch {
       setError('写真の読み込みに失敗しました');
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async () => {
@@ -76,6 +77,28 @@ export function ReturnAcceptModal({
     setError(null);
 
     try {
+      // Upload photos to R2 if present
+      let photoAfterFrontUrl: string | undefined;
+      let photoAfterBackUrl: string | undefined;
+
+      if (photoAfterFront) {
+        // Use first item's number for the photo path
+        photoAfterFrontUrl = await uploadPhoto(
+          photoAfterFront.blob,
+          selectedItems[0].item_number,
+          'after_front',
+          photoAfterFront.mimeType
+        );
+      }
+      if (photoAfterBack) {
+        photoAfterBackUrl = await uploadPhoto(
+          photoAfterBack.blob,
+          selectedItems[0].item_number,
+          'after_back',
+          photoAfterBack.mimeType
+        );
+      }
+
       const results = await Promise.allSettled(
         selectedItems.map((item) =>
           fetch(`/api/items/${encodeURIComponent(item.item_number)}`, {
@@ -111,8 +134,10 @@ export function ReturnAcceptModal({
 
       // Reset form
       setReturnDate(getTodayString());
-      setPhotoAfterFrontUrl(null);
-      setPhotoAfterBackUrl(null);
+      if (photoAfterFront?.previewUrl) URL.revokeObjectURL(photoAfterFront.previewUrl);
+      if (photoAfterBack?.previewUrl) URL.revokeObjectURL(photoAfterBack.previewUrl);
+      setPhotoAfterFront(null);
+      setPhotoAfterBack(null);
       setIsPaidStorage(false);
       setScheduledReturnDate('');
       setNotes('');
@@ -130,6 +155,8 @@ export function ReturnAcceptModal({
 
   const handleClose = () => {
     if (!isSubmitting) {
+      if (photoAfterFront?.previewUrl) URL.revokeObjectURL(photoAfterFront.previewUrl);
+      if (photoAfterBack?.previewUrl) URL.revokeObjectURL(photoAfterBack.previewUrl);
       setError(null);
       onClose();
     }
@@ -184,8 +211,8 @@ export function ReturnAcceptModal({
                 onClick={() => frontInputRef.current?.click()}
                 className="w-full h-24 border border-dashed border-usuzumi/40 bg-shironeri flex flex-col items-center justify-center gap-1 hover:bg-kinari/50 transition-colors"
               >
-                {photoAfterFrontUrl ? (
-                  <img src={photoAfterFrontUrl} alt="加工後 表面" className="w-full h-full object-cover" />
+                {photoAfterFront ? (
+                  <img src={photoAfterFront.previewUrl} alt="加工後 表面" className="w-full h-full object-cover" />
                 ) : (
                   <>
                     <svg className="w-6 h-6 text-ginnezumi" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,13 +229,14 @@ export function ReturnAcceptModal({
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                onChange={(e) => handleFileChange(e, setPhotoAfterFrontUrl)}
+                onChange={(e) => handleFileChange(e, setPhotoAfterFront)}
               />
-              {photoAfterFrontUrl && (
+              {photoAfterFront && (
                 <button
                   type="button"
                   onClick={() => {
-                    setPhotoAfterFrontUrl(null);
+                    if (photoAfterFront.previewUrl) URL.revokeObjectURL(photoAfterFront.previewUrl);
+                    setPhotoAfterFront(null);
                     if (frontInputRef.current) frontInputRef.current.value = '';
                   }}
                   className="mt-1 text-xs text-kokiake hover:underline"
@@ -225,8 +253,8 @@ export function ReturnAcceptModal({
                 onClick={() => backInputRef.current?.click()}
                 className="w-full h-24 border border-dashed border-usuzumi/40 bg-shironeri flex flex-col items-center justify-center gap-1 hover:bg-kinari/50 transition-colors"
               >
-                {photoAfterBackUrl ? (
-                  <img src={photoAfterBackUrl} alt="加工後 裏面" className="w-full h-full object-cover" />
+                {photoAfterBack ? (
+                  <img src={photoAfterBack.previewUrl} alt="加工後 裏面" className="w-full h-full object-cover" />
                 ) : (
                   <>
                     <svg className="w-6 h-6 text-ginnezumi" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,13 +271,14 @@ export function ReturnAcceptModal({
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                onChange={(e) => handleFileChange(e, setPhotoAfterBackUrl)}
+                onChange={(e) => handleFileChange(e, setPhotoAfterBack)}
               />
-              {photoAfterBackUrl && (
+              {photoAfterBack && (
                 <button
                   type="button"
                   onClick={() => {
-                    setPhotoAfterBackUrl(null);
+                    if (photoAfterBack.previewUrl) URL.revokeObjectURL(photoAfterBack.previewUrl);
+                    setPhotoAfterBack(null);
                     if (backInputRef.current) backInputRef.current.value = '';
                   }}
                   className="mt-1 text-xs text-kokiake hover:underline"

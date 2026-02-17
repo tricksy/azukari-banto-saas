@@ -146,36 +146,21 @@ UPDATE tenants SET status = 'cancelled' WHERE slug = 'matsumoto-gofuku';
 
 ---
 
-## Supabase Storage のテナント分離
+## Cloudflare R2 のテナント分離
 
-写真保存用のストレージバケットは、パスプレフィックスでテナントを分離する:
+写真はCloudflare R2に保存される。テナント分離はストレージパスのプレフィックスで実現:
 
 ```
-photos/
-  ├── {tenant_id}/
-  │   ├── {year}/
-  │   │   ├── {monthday}/
-  │   │   │   ├── {item_number}/
-  │   │   │   │   ├── front.webp
-  │   │   │   │   ├── back.webp
-  │   │   │   │   ├── after_front.webp
-  │   │   │   │   ├── after_back.webp
-  │   │   │   │   └── additional/
-  │   │   │   │       ├── 1.webp
-  │   │   │   │       └── 2.webp
+{tenantId}/{itemNumber}/{type}_{timestamp}.webp
 ```
 
-### バケットポリシー（TODO）
-
-```sql
--- テナント別にアクセス制御するRLSポリシー
-CREATE POLICY tenant_photos ON storage.objects
-  FOR ALL
-  USING (
-    bucket_id = 'photos' AND
-    (storage.foldername(name))[1] = current_setting('app.tenant_id')
-  );
+例:
 ```
+A3F0/T01-20260118143025-01/front_1737190225000.webp
+B1C2/T01-20260118143025-01/back_1737190225000.webp
+```
+
+R2のバケットポリシーはバケット全体に適用されるため、テナント分離はアプリケーション層（APIルート内のセッション検証）で保証される。
 
 ---
 

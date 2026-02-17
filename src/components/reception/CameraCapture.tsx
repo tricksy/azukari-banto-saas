@@ -1,17 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { resizeAndConvertToBlob, createPreviewUrl, fileToResizedBlob } from '@/lib/image';
 
 interface CameraCaptureProps {
-  onCapture: (imageDataUrl: string) => void;
+  onCapture: (data: { blob: Blob; previewUrl: string; mimeType: string }) => void;
   onCancel: () => void;
   label?: string;
 }
-
-const MAX_WIDTH = 1600;
-const MAX_HEIGHT = 2400;
-const WEBP_QUALITY = 0.85;
-const JPEG_QUALITY = 0.8;
 
 /**
  * カメラ撮影コンポーネント
@@ -79,52 +75,15 @@ export function CameraCapture({ onCapture, onCancel, label }: CameraCaptureProps
     };
   }, [stopStream]);
 
-  /**
-   * 画像をリサイズしてDataURLに変換
-   */
-  function resizeAndConvert(
-    source: HTMLVideoElement | HTMLImageElement,
-    sourceWidth: number,
-    sourceHeight: number
-  ): string {
-    let width = sourceWidth;
-    let height = sourceHeight;
-
-    if (width > MAX_WIDTH || height > MAX_HEIGHT) {
-      const ratio = Math.min(MAX_WIDTH / width, MAX_HEIGHT / height);
-      width = Math.round(width * ratio);
-      height = Math.round(height * ratio);
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('Canvas context not available');
-    }
-
-    ctx.drawImage(source, 0, 0, width, height);
-
-    // WebP対応チェック
-    const webpDataUrl = canvas.toDataURL('image/webp', WEBP_QUALITY);
-    if (webpDataUrl.startsWith('data:image/webp')) {
-      return webpDataUrl;
-    }
-
-    // WebP非対応の場合はJPEGにフォールバック
-    return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-  }
-
-  function handleCapture() {
+  async function handleCapture() {
     const video = videoRef.current;
     if (!video) return;
 
     try {
-      const dataUrl = resizeAndConvert(video, video.videoWidth, video.videoHeight);
+      const { blob, mimeType } = await resizeAndConvertToBlob(video, video.videoWidth, video.videoHeight);
+      const previewUrl = createPreviewUrl(blob);
       stopStream();
-      onCapture(dataUrl);
+      onCapture({ blob, previewUrl, mimeType });
     } catch {
       setError('撮影に失敗しました。もう一度お試しください。');
     }
@@ -135,26 +94,17 @@ export function CameraCapture({ onCapture, onCancel, label }: CameraCaptureProps
     onCancel();
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const dataUrl = resizeAndConvert(img, img.naturalWidth, img.naturalHeight);
-        onCapture(dataUrl);
-      } catch {
-        setError('画像の処理に失敗しました。別の画像をお試しください。');
-      } finally {
-        URL.revokeObjectURL(img.src);
-      }
-    };
-    img.onerror = () => {
-      setError('画像を読み込めませんでした。');
-      URL.revokeObjectURL(img.src);
-    };
-    img.src = URL.createObjectURL(file);
+    try {
+      const { blob, mimeType } = await fileToResizedBlob(file);
+      const previewUrl = createPreviewUrl(blob);
+      onCapture({ blob, previewUrl, mimeType });
+    } catch {
+      setError('画像の処理に失敗しました。別の画像をお試しください。');
+    }
   }
 
   // カメラ非対応時: ファイルアップロードUI

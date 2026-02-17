@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | スタイリング | Tailwind CSS v4 |
 | ホスティング | Vercel |
 | データベース | Supabase (PostgreSQL + RLS) |
-| ストレージ | Supabase Storage（予定） |
+| ストレージ | Cloudflare R2 |
 | 認証 | 独自実装（JWT + bcryptjs） |
 | メール | 未定（Resend等を検討） |
 | 定期実行 | Vercel Cron Jobs（予定） |
@@ -185,6 +185,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 │   │   ├── rate-limit.ts            # ログイン試行制限
 │   │   ├── date.ts                  # 日付ユーティリティ（JST対応）
 │   │   ├── admin-path.ts            # 管理者パス生成ユーティリティ
+│   │   ├── image.ts                # WebP変換ユーティリティ
+│   │   ├── r2.ts                   # Cloudflare R2クライアント
+│   │   ├── upload-photo.ts         # 写真アップロードユーティリティ
 │   │   └── supabase/
 │   │       ├── client.ts            # ブラウザ用Supabaseクライアント
 │   │       └── server.ts            # サーバー用 + Service Roleクライアント
@@ -284,6 +287,17 @@ supabase stop
 - [ ] 環境変数が適切に設定されていること
 - [ ] SUPABASE_SERVICE_ROLE_KEY がクライアントに露出していないこと
 - [ ] `NEXT_PUBLIC_ADMIN_PREFIX` が設定されていること（管理者URL難読化）
+- [ ] R2関連の環境変数が設定されていること
+
+### 環境変数（Cloudflare R2）
+
+| 変数名 | 説明 |
+| ------ | ---- |
+| `R2_ACCOUNT_ID` | CloudflareアカウントID |
+| `R2_ACCESS_KEY_ID` | R2 APIトークンのアクセスキーID |
+| `R2_SECRET_ACCESS_KEY` | R2 APIトークンのシークレットアクセスキー |
+| `R2_BUCKET_NAME` | R2バケット名 |
+| `R2_PUBLIC_URL` | R2パブリックアクセスURL（カスタムドメインまたはr2.dev） |
 
 ---
 

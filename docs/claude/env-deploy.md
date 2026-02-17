@@ -176,10 +176,19 @@ localhost ではサブドメインが使えないため、以下の方法でテ�
 4. インデックスを作成
 5. トリガーを設定
 
-### 3. ストレージセットアップ（TODO）
+### 3. ストレージセットアップ（Cloudflare R2）
 
-- 写真保存用バケットを作成
-- バケットポリシーでテナント分離
+写真はCloudflare R2に保存される。以下の環境変数を設定:
+
+| 変数名 | 説明 |
+|-------|------|
+| `R2_ACCOUNT_ID` | CloudflareアカウントID |
+| `R2_ACCESS_KEY_ID` | R2 APIトークンのAccess Key ID |
+| `R2_SECRET_ACCESS_KEY` | R2 APIトークンのSecret Access Key |
+| `R2_BUCKET_NAME` | バケット名（例: `aszukari-banto-photos`） |
+| `R2_PUBLIC_URL` | バケットの公開URL（例: `https://pub-xxxx.r2.dev`） |
+
+ストレージパス: `{tenantId}/{itemNumber}/{type}_{timestamp}.webp`
 
 ---
 

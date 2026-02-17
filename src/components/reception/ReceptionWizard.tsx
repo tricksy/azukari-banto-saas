@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { StepPhoto } from './StepPhoto';
 import { StepItemDetails } from './StepItemDetails';
@@ -9,6 +9,7 @@ import { StepAddMore } from './StepAddMore';
 import { StepConfirm } from './StepConfirm';
 import { StepComplete } from './StepComplete';
 import { getJSTTimestamp } from '@/lib/date';
+import { uploadItemPhotos } from '@/lib/upload-photo';
 
 // ============================================
 // Types
@@ -20,7 +21,11 @@ export interface WizardItem {
   photoBackUrl?: string;
   photoFrontMemo?: string;
   photoBackMemo?: string;
-  additionalPhotos: Array<{ url: string; memo?: string }>;
+  photoFrontBlob?: Blob;
+  photoFrontMimeType?: string;
+  photoBackBlob?: Blob;
+  photoBackMimeType?: string;
+  additionalPhotos: Array<{ url: string; memo?: string; blob?: Blob; mimeType?: string }>;
   // Item details
   productType: string;
   productName: string;
@@ -175,7 +180,11 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
     photoBackUrl?: string;
     photoFrontMemo?: string;
     photoBackMemo?: string;
-    additionalPhotos: Array<{ url: string; memo?: string }>;
+    photoFrontBlob?: Blob;
+    photoFrontMimeType?: string;
+    photoBackBlob?: Blob;
+    photoBackMimeType?: string;
+    additionalPhotos: Array<{ url: string; memo?: string; blob?: Blob; mimeType?: string }>;
   }) => {
     setState((prev) => {
       const newItems = [...prev.items];
@@ -184,6 +193,10 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
       currentItem.photoBackUrl = photos.photoBackUrl;
       currentItem.photoFrontMemo = photos.photoFrontMemo;
       currentItem.photoBackMemo = photos.photoBackMemo;
+      currentItem.photoFrontBlob = photos.photoFrontBlob;
+      currentItem.photoFrontMimeType = photos.photoFrontMimeType;
+      currentItem.photoBackBlob = photos.photoBackBlob;
+      currentItem.photoBackMimeType = photos.photoBackMimeType;
       currentItem.additionalPhotos = photos.additionalPhotos;
       newItems[prev.currentItemIndex] = currentItem;
       return { ...prev, items: newItems };
@@ -285,8 +298,27 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
     try {
       // Generate item numbers client-side
       const timestamp = getJSTTimestamp();
+      const itemNumbers = state.items.map((_, index) =>
+        `${workerId}-${timestamp}-${String(index + 1).padStart(2, '0')}`
+      );
+
+      // Upload all photos to R2 in parallel
+      const uploadResults = await Promise.all(
+        state.items.map((item, index) =>
+          uploadItemPhotos(itemNumbers[index], {
+            frontBlob: item.photoFrontBlob,
+            frontMimeType: item.photoFrontMimeType,
+            backBlob: item.photoBackBlob,
+            backMimeType: item.photoBackMimeType,
+            additionalBlobs: item.additionalPhotos
+              .filter((p) => p.blob)
+              .map((p) => ({ blob: p.blob!, mimeType: p.mimeType })),
+          })
+        )
+      );
+
       const apiItems = state.items.map((item, index) => ({
-        item_number: `${workerId}-${timestamp}-${String(index + 1).padStart(2, '0')}`,
+        item_number: itemNumbers[index],
         product_type: item.productType,
         product_name: item.productName,
         color: item.color || undefined,
@@ -297,15 +329,21 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
         request_detail: item.requestDetail || undefined,
         scheduled_ship_date: item.scheduledShipDate || undefined,
         is_paid_storage: item.isPaidStorage || false,
-        photo_front_url: item.photoFrontUrl || undefined,
-        photo_back_url: item.photoBackUrl || undefined,
+        photo_front_url: uploadResults[index].frontUrl || item.photoFrontUrl || undefined,
+        photo_back_url: uploadResults[index].backUrl || item.photoBackUrl || undefined,
         photo_front_memo: item.photoFrontMemo || undefined,
         photo_back_memo: item.photoBackMemo || undefined,
-        additional_photos: item.additionalPhotos.length > 0 ? item.additionalPhotos : undefined,
+        additional_photos: uploadResults[index].additionalUrls
+          ? uploadResults[index].additionalUrls!.map((url, i) => ({
+              url,
+              memo: item.additionalPhotos[i]?.memo,
+            }))
+          : item.additionalPhotos.length > 0
+            ? item.additionalPhotos.map((p) => ({ url: p.url, memo: p.memo }))
+            : undefined,
       }));
 
       let receptionNumber: string;
-      let itemNumbers: string[];
 
       if (state.customerId) {
         // Customer selected: full registration
@@ -328,7 +366,6 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
 
         const data = await res.json();
         receptionNumber = data.reception.reception_number;
-        itemNumbers = data.items.map((it: { item_number: string }) => it.item_number);
       } else {
         // No customer: save as draft
         const res = await fetch('/api/receptions/draft', {
@@ -344,7 +381,6 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
 
         const data = await res.json();
         receptionNumber = data.reception.reception_number;
-        itemNumbers = data.items.map((it: { item_number: string }) => it.item_number);
       }
 
       setState((prev) => ({
@@ -376,26 +412,49 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
     router.push('/dashboard');
   }, [router]);
 
+  // --- Cleanup blob URLs ---
+
+  useEffect(() => {
+    return () => {
+      // Clean up blob: URLs on unmount
+      state.items.forEach((item) => {
+        if (item.photoFrontUrl?.startsWith('blob:')) URL.revokeObjectURL(item.photoFrontUrl);
+        if (item.photoBackUrl?.startsWith('blob:')) URL.revokeObjectURL(item.photoBackUrl);
+        item.additionalPhotos.forEach((p) => {
+          if (p.url?.startsWith('blob:')) URL.revokeObjectURL(p.url);
+        });
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- Render ---
 
   return (
     <div>
       <StepIndicator currentStep={state.step} />
 
-      {state.step === 'photo' && (
-        <StepPhoto
-          photoFrontUrl={state.items[state.currentItemIndex].photoFrontUrl}
-          photoBackUrl={state.items[state.currentItemIndex].photoBackUrl}
-          photoFrontMemo={state.items[state.currentItemIndex].photoFrontMemo}
-          photoBackMemo={state.items[state.currentItemIndex].photoBackMemo}
-          additionalPhotos={state.items[state.currentItemIndex].additionalPhotos}
-          onUpdate={handlePhotoUpdate}
-          onNext={handlePhotoNext}
-          onBack={state.currentItemIndex > 0 ? handlePhotoBack : undefined}
-          itemIndex={state.currentItemIndex}
-          customerName={state.customerName}
-        />
-      )}
+      {state.step === 'photo' && (() => {
+        const currentItem = state.items[state.currentItemIndex];
+        return (
+          <StepPhoto
+            photoFrontUrl={currentItem.photoFrontUrl}
+            photoBackUrl={currentItem.photoBackUrl}
+            photoFrontMemo={currentItem.photoFrontMemo}
+            photoBackMemo={currentItem.photoBackMemo}
+            photoFrontBlob={currentItem.photoFrontBlob}
+            photoFrontMimeType={currentItem.photoFrontMimeType}
+            photoBackBlob={currentItem.photoBackBlob}
+            photoBackMimeType={currentItem.photoBackMimeType}
+            additionalPhotos={currentItem.additionalPhotos}
+            onUpdate={handlePhotoUpdate}
+            onNext={handlePhotoNext}
+            onBack={state.currentItemIndex > 0 ? handlePhotoBack : undefined}
+            itemIndex={state.currentItemIndex}
+            customerName={state.customerName}
+          />
+        );
+      })()}
 
       {state.step === 'itemDetails' && (
         <StepItemDetails

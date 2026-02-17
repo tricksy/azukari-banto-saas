@@ -8,13 +8,21 @@ interface StepPhotoProps {
   photoBackUrl?: string;
   photoFrontMemo?: string;
   photoBackMemo?: string;
-  additionalPhotos: Array<{ url: string; memo?: string }>;
+  photoFrontBlob?: Blob;
+  photoFrontMimeType?: string;
+  photoBackBlob?: Blob;
+  photoBackMimeType?: string;
+  additionalPhotos: Array<{ url: string; memo?: string; blob?: Blob; mimeType?: string }>;
   onUpdate: (photos: {
     photoFrontUrl?: string;
     photoBackUrl?: string;
     photoFrontMemo?: string;
     photoBackMemo?: string;
-    additionalPhotos: Array<{ url: string; memo?: string }>;
+    photoFrontBlob?: Blob;
+    photoFrontMimeType?: string;
+    photoBackBlob?: Blob;
+    photoBackMimeType?: string;
+    additionalPhotos: Array<{ url: string; memo?: string; blob?: Blob; mimeType?: string }>;
   }) => void;
   onNext: () => void;
   onBack?: () => void;
@@ -34,6 +42,10 @@ export function StepPhoto({
   photoBackUrl,
   photoFrontMemo,
   photoBackMemo,
+  photoFrontBlob,
+  photoFrontMimeType,
+  photoBackBlob,
+  photoBackMimeType,
   additionalPhotos,
   onUpdate,
   onNext,
@@ -45,21 +57,29 @@ export function StepPhoto({
 
   const canProceed = !!photoFrontUrl && !!photoBackUrl;
 
-  function handleCapture(dataUrl: string) {
+  function handleCapture(data: { blob: Blob; previewUrl: string; mimeType: string }) {
     if (captureTarget === 'front') {
       onUpdate({
-        photoFrontUrl: dataUrl,
+        photoFrontUrl: data.previewUrl,
         photoBackUrl,
         photoFrontMemo,
         photoBackMemo,
+        photoFrontBlob: data.blob,
+        photoFrontMimeType: data.mimeType,
+        photoBackBlob,
+        photoBackMimeType,
         additionalPhotos,
       });
     } else if (captureTarget === 'back') {
       onUpdate({
         photoFrontUrl,
-        photoBackUrl: dataUrl,
+        photoBackUrl: data.previewUrl,
         photoFrontMemo,
         photoBackMemo,
+        photoFrontBlob,
+        photoFrontMimeType,
+        photoBackBlob: data.blob,
+        photoBackMimeType: data.mimeType,
         additionalPhotos,
       });
     } else if (captureTarget === 'additional') {
@@ -68,7 +88,11 @@ export function StepPhoto({
         photoBackUrl,
         photoFrontMemo,
         photoBackMemo,
-        additionalPhotos: [...additionalPhotos, { url: dataUrl }],
+        photoFrontBlob,
+        photoFrontMimeType,
+        photoBackBlob,
+        photoBackMimeType,
+        additionalPhotos: [...additionalPhotos, { url: data.previewUrl, blob: data.blob, mimeType: data.mimeType }],
       });
     }
     setCaptureTarget(null);
@@ -88,6 +112,10 @@ export function StepPhoto({
         photoBackUrl,
         photoFrontMemo: memo,
         photoBackMemo,
+        photoFrontBlob,
+        photoFrontMimeType,
+        photoBackBlob,
+        photoBackMimeType,
         additionalPhotos,
       });
     } else if (target === 'back') {
@@ -96,6 +124,10 @@ export function StepPhoto({
         photoBackUrl,
         photoFrontMemo,
         photoBackMemo: memo,
+        photoFrontBlob,
+        photoFrontMimeType,
+        photoBackBlob,
+        photoBackMimeType,
         additionalPhotos,
       });
     } else {
@@ -106,6 +138,10 @@ export function StepPhoto({
         photoBackUrl,
         photoFrontMemo,
         photoBackMemo,
+        photoFrontBlob,
+        photoFrontMimeType,
+        photoBackBlob,
+        photoBackMimeType,
         additionalPhotos: updated,
       });
     }
@@ -118,6 +154,10 @@ export function StepPhoto({
       photoBackUrl,
       photoFrontMemo,
       photoBackMemo,
+      photoFrontBlob,
+      photoFrontMimeType,
+      photoBackBlob,
+      photoBackMimeType,
       additionalPhotos: updated,
     });
   }
