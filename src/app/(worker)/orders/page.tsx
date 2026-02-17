@@ -117,13 +117,21 @@ export default function WorkerOrdersPage() {
   };
 
   const tabs = [
-    { key: 'pending_ship' as Tab, label: '発送待ち' },
-    { key: 'rework' as Tab, label: '再加工' },
+    { key: 'pending_ship' as Tab, label: '発送待ち', activeColor: 'border-shu text-shu' },
+    { key: 'rework' as Tab, label: '再加工', activeColor: 'border-kokiake text-kokiake' },
   ];
 
   return (
-    <div className="p-4 pb-28 space-y-4">
-      <h2 className="text-xl font-mincho text-sumi">発注管理</h2>
+    <div className="p-4 pb-32 space-y-4">
+      <header className="mb-2">
+        <div className="flex items-start gap-3">
+          <div className="w-1 h-12 bg-shu shrink-0 mt-1"></div>
+          <div>
+            <h2 className="text-xl font-mincho text-sumi">発注管理</h2>
+            <p className="text-sm text-ginnezumi mt-1">業者への発送・加工依頼</p>
+          </div>
+        </div>
+      </header>
 
       {/* タブ */}
       <div className="flex border-b border-usuzumi/20">
@@ -131,10 +139,10 @@ export default function WorkerOrdersPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === tab.key
-                ? 'border-shu text-shu'
-                : 'border-transparent text-ginnezumi hover:text-aitetsu'
+                ? tab.activeColor
+                : 'border-transparent text-ginnezumi hover:text-sumi'
             }`}
           >
             {tab.label}
@@ -145,20 +153,19 @@ export default function WorkerOrdersPage() {
         ))}
       </div>
 
-      {/* 全選択 / 選択解除 */}
+      {/* 全選択 */}
       {!isLoading && items.length > 0 && (
-        <div className="flex items-center justify-between">
-          <button
-            onClick={selectAll}
-            className="text-sm text-aitetsu hover:text-shu transition-colors"
-          >
-            {allSelected ? '選択を解除' : 'すべて選択'}
-          </button>
-          {selectedIds.size > 0 && (
-            <span className="text-sm text-shu">
-              {selectedIds.size}件選択中
-            </span>
-          )}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="selectAll"
+            className="w-4 h-4"
+            checked={allSelected}
+            onChange={selectAll}
+          />
+          <label htmlFor="selectAll" className="text-sm text-ginnezumi">
+            すべて選択 ({selectedIds.size}/{items.length})
+          </label>
         </div>
       )}
 
@@ -192,12 +199,13 @@ export default function WorkerOrdersPage() {
         <div className="space-y-2">
           {items.map((item) => {
             const isSelected = selectedIds.has(item.item_number);
+            const isRework = activeTab === 'rework';
             return (
               <div
                 key={item.item_number}
                 className={`flex items-stretch gap-0 transition-colors ${
                   isSelected ? 'bg-shu/5' : ''
-                }`}
+                } ${isRework ? 'border-l-4 border-l-kokiake' : ''}`}
                 onClick={() => toggleSelect(item.item_number)}
                 role="button"
                 tabIndex={0}
@@ -222,9 +230,18 @@ export default function WorkerOrdersPage() {
 
                 {/* カード */}
                 <div className="flex-1 min-w-0">
-                  <ItemCard item={item} />
+                  <div className="flex items-center gap-1">
+                    <div className="flex-1 min-w-0">
+                      <ItemCard item={item} />
+                    </div>
+                    {isRework && (
+                      <span className="text-xs px-1.5 py-0.5 bg-kokiake/10 text-kokiake flex-shrink-0 mr-2">
+                        再加工
+                      </span>
+                    )}
+                  </div>
                   {/* 再加工タブ: 元業者名を表示 */}
-                  {activeTab === 'rework' && item.vendor_name && (
+                  {isRework && item.vendor_name && (
                     <div className="px-3 pb-2 -mt-1 text-xs text-ginnezumi">
                       元業者: {item.vendor_name}
                     </div>
@@ -236,32 +253,38 @@ export default function WorkerOrdersPage() {
         </div>
       )}
 
-      {/* アクションバー（選択時のみ表示） */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-usuzumi/20 p-4 shadow-lg z-40">
-          <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
-            <span className="text-sm text-aitetsu">
-              {selectedIds.size}件選択中
-            </span>
-            <div className="flex gap-2">
-              {activeTab === 'pending_ship' && (
-                <button
-                  onClick={() => setIsCancelModalOpen(true)}
-                  className="px-4 py-2 text-sm text-kokiake border border-kokiake hover:bg-kokiake/10 transition-colors"
-                >
-                  キャンセル
-                </button>
-              )}
-              <button
-                onClick={() => setIsShipModalOpen(true)}
-                className="btn-primary text-sm"
-              >
-                業者へ発送
-              </button>
-            </div>
-          </div>
+      {/* アクションバー（下部固定） */}
+      <div className="fixed bottom-14 left-0 right-0 bg-white border-t border-usuzumi/20 p-4 shadow-lg z-40">
+        <div className="flex gap-3 max-w-lg mx-auto">
+          <button
+            onClick={() => setIsShipModalOpen(true)}
+            disabled={selectedIds.size === 0}
+            className="flex-1 btn-primary text-sm disabled:opacity-50"
+          >
+            {activeTab === 'rework' ? '再発送登録' : '発送登録'} ({selectedIds.size})
+          </button>
+          <button
+            onClick={() => {
+              if (selectedIds.size === 0) return;
+              const itemNumbers = Array.from(selectedIds).join(',');
+              window.open(`/print/processing-order/selected?itemNumbers=${itemNumbers}`, '_blank', 'width=900,height=700');
+            }}
+            disabled={selectedIds.size === 0}
+            className="btn-outline text-sm disabled:opacity-50"
+          >
+            印刷
+          </button>
+          {activeTab === 'pending_ship' && (
+            <button
+              onClick={() => setIsCancelModalOpen(true)}
+              disabled={selectedIds.size === 0}
+              className="px-4 py-2 text-sm border border-ginnezumi/50 text-ginnezumi hover:bg-kinari hover:text-sumi transition-colors disabled:opacity-50"
+            >
+              注文取消
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* モーダル */}
       <ShipToVendorModal
@@ -269,6 +292,7 @@ export default function WorkerOrdersPage() {
         onClose={() => setIsShipModalOpen(false)}
         selectedItems={selectedItems}
         onSuccess={handleOperationSuccess}
+        activeTab={activeTab}
       />
 
       {activeTab === 'pending_ship' && (

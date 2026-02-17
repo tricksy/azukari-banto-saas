@@ -36,6 +36,7 @@ type CaptureTarget = 'front' | 'back' | 'additional';
  * 写真撮影ステップ
  *
  * 表面・裏面（必須）+ 追加写真（任意）の撮影・管理を行う。
+ * KURATSUGIの1枚ずつ撮影フローに統一。
  */
 export function StepPhoto({
   photoFrontUrl,
@@ -162,7 +163,35 @@ export function StepPhoto({
     });
   }
 
-  // カメラ撮影モード
+  function handleClearFront() {
+    onUpdate({
+      photoFrontUrl: undefined,
+      photoBackUrl,
+      photoFrontMemo: '',
+      photoBackMemo,
+      photoFrontBlob: undefined,
+      photoFrontMimeType: undefined,
+      photoBackBlob,
+      photoBackMimeType,
+      additionalPhotos,
+    });
+  }
+
+  function handleClearBack() {
+    onUpdate({
+      photoFrontUrl,
+      photoBackUrl: undefined,
+      photoFrontMemo,
+      photoBackMemo: '',
+      photoFrontBlob,
+      photoFrontMimeType,
+      photoBackBlob: undefined,
+      photoBackMimeType: undefined,
+      additionalPhotos,
+    });
+  }
+
+  // Camera capture mode
   if (captureTarget) {
     const labels: Record<CaptureTarget, string> = {
       front: '表面を撮影してください',
@@ -180,188 +209,207 @@ export function StepPhoto({
 
   return (
     <div className="space-y-6">
-      {/* ヘッダー情報 */}
+      {/* Header info */}
       {customerName && (
-        <div className="text-center">
-          <p className="text-aitetsu">
-            {customerName}さん — {itemIndex + 1}点目
+        <div className="bg-shironeri border border-usuzumi/20 p-3 text-sm">
+          <span className="text-ginnezumi">紐付け先：</span>
+          <span className="font-medium ml-1">{customerName}</span>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="card-header">
+          <h2 className="text-lg">
+            {itemIndex === 0 ? '商品を撮影' : `商品を撮影（${itemIndex + 1}点目）`}
+          </h2>
+          <p className="text-sm text-ginnezumi">
+            まず写真を撮影してください
+            <span className="ml-2 text-kokiake font-medium">[必須] 表面・裏面の両方</span>
           </p>
         </div>
-      )}
-
-      <h3 className="text-lg font-mincho text-sumi">写真撮影</h3>
-
-      {/* 表面 */}
-      <div className="card">
-        <div className="card-body space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-aitetsu">表面</span>
-            {photoFrontUrl ? (
-              <span className="text-xs text-oitake">撮影済み</span>
-            ) : (
-              <span className="text-xs text-ginnezumi">未撮影</span>
-            )}
-          </div>
-
-          {photoFrontUrl ? (
-            <div className="space-y-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoFrontUrl}
-                alt="表面"
-                className="w-full max-h-48 object-contain bg-shironeri"
-              />
-              <input
-                type="text"
-                value={photoFrontMemo || ''}
-                onChange={(e) => handleMemoChange('front', e.target.value)}
-                placeholder="メモ（任意）"
-                className="form-input form-input-sm"
-              />
-              <button
-                type="button"
+        <div className="card-body">
+          {/* Sequential photo capture flow */}
+          {!photoFrontUrl ? (
+            // Step 1: Capture front
+            <div>
+              <div className="text-center mb-3">
+                <span className="inline-block px-3 py-1 bg-shu/10 text-shu text-sm font-medium rounded-full">
+                  1/2 表面を撮影
+                </span>
+              </div>
+              <div
+                className="aspect-[3/4] bg-shironeri border-2 border-dashed border-usuzumi/40 flex items-center justify-center cursor-pointer hover:border-shu hover:bg-shu/5 transition-colors overflow-hidden"
                 onClick={() => setCaptureTarget('front')}
-                className="btn-outline btn-sm w-full"
               >
-                撮り直す
-              </button>
+                <div className="text-center text-ginnezumi p-4">
+                  <div className="text-6xl mb-3">📷</div>
+                  <div className="text-lg font-medium">タップして表面を撮影</div>
+                </div>
+              </div>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setCaptureTarget('front')}
-              className="btn-primary w-full"
-            >
-              表面を撮影
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 裏面 */}
-      <div className="card">
-        <div className="card-body space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-aitetsu">裏面</span>
-            {photoBackUrl ? (
-              <span className="text-xs text-oitake">撮影済み</span>
-            ) : (
-              <span className="text-xs text-ginnezumi">未撮影</span>
-            )}
-          </div>
-
-          {photoBackUrl ? (
-            <div className="space-y-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photoBackUrl}
-                alt="裏面"
-                className="w-full max-h-48 object-contain bg-shironeri"
-              />
-              <input
-                type="text"
-                value={photoBackMemo || ''}
-                onChange={(e) => handleMemoChange('back', e.target.value)}
-                placeholder="メモ（任意）"
-                className="form-input form-input-sm"
-              />
-              <button
-                type="button"
-                onClick={() => setCaptureTarget('back')}
-                className="btn-outline btn-sm w-full"
-              >
-                撮り直す
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setCaptureTarget('back')}
-              className="btn-primary w-full"
-            >
-              裏面を撮影
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 追加写真 */}
-      <div className="card">
-        <div className="card-body space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-aitetsu">追加写真</span>
-            <span className="text-xs text-ginnezumi">
-              {additionalPhotos.length}枚
-            </span>
-          </div>
-
-          {additionalPhotos.map((photo, index) => (
-            <div
-              key={index}
-              className="border border-usuzumi/20 p-2 space-y-2"
-            >
-              <div className="relative">
+          ) : !photoBackUrl ? (
+            // Step 2: Front done, capture back
+            <div>
+              <div className="text-center mb-3">
+                <span className="inline-block px-3 py-1 bg-shu/10 text-shu text-sm font-medium rounded-full">
+                  1/2 表面 ✓
+                </span>
+              </div>
+              {/* Front preview */}
+              <div className="aspect-[3/4] bg-shironeri border border-usuzumi/20 overflow-hidden mb-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={photo.url}
-                  alt={`追加写真 ${index + 1}`}
-                  className="w-full max-h-32 object-contain bg-shironeri"
-                />
+                <img src={photoFrontUrl} alt="表面" className="w-full h-full object-contain" />
+              </div>
+              {/* Action buttons */}
+              <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => handleDeleteAdditional(index)}
-                  className="absolute top-1 right-1 w-6 h-6 bg-sumi/70 text-white flex items-center justify-center text-xs hover:bg-sumi"
-                  aria-label={`追加写真${index + 1}を削除`}
+                  onClick={handleClearFront}
+                  className="btn-secondary flex-1"
                 >
-                  ×
+                  撮り直す
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCaptureTarget('back')}
+                  className="btn-primary flex-1"
+                >
+                  裏面を撮影 →
                 </button>
               </div>
-              <input
-                type="text"
-                value={photo.memo || ''}
-                onChange={(e) => handleMemoChange(index, e.target.value)}
-                placeholder="メモ（任意）"
-                className="form-input form-input-sm"
-              />
             </div>
-          ))}
+          ) : (
+            // Both captured: review + memos + additional photos
+            <div className="space-y-6">
+              <div className="text-center mb-3">
+                <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                  ✓ 必須写真 撮影完了
+                </span>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setCaptureTarget('additional')}
-            className="btn-outline btn-sm w-full"
-          >
-            追加写真を撮影
-          </button>
+              {/* Required photos (front/back) + memo */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Front */}
+                <div>
+                  <span className="text-sm text-ginnezumi block mb-1 text-center">表面</span>
+                  <div className="aspect-[3/4] bg-shironeri border border-usuzumi/20 overflow-hidden mb-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoFrontUrl} alt="表面" className="w-full h-full object-contain" />
+                  </div>
+                  <input
+                    type="text"
+                    value={photoFrontMemo || ''}
+                    onChange={(e) => handleMemoChange('front', e.target.value)}
+                    placeholder="メモ（任意）"
+                    className="form-input w-full text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleClearFront}
+                    className="w-full mt-2 px-3 py-1.5 bg-kokiake/10 border border-kokiake/30 rounded text-xs text-kokiake hover:bg-kokiake hover:text-white hover:border-kokiake transition-colors flex items-center justify-center gap-1"
+                  >
+                    <span>🔄</span>
+                    <span>撮り直す</span>
+                  </button>
+                </div>
+                {/* Back */}
+                <div>
+                  <span className="text-sm text-ginnezumi block mb-1 text-center">裏面</span>
+                  <div className="aspect-[3/4] bg-shironeri border border-usuzumi/20 overflow-hidden mb-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoBackUrl} alt="裏面" className="w-full h-full object-contain" />
+                  </div>
+                  <input
+                    type="text"
+                    value={photoBackMemo || ''}
+                    onChange={(e) => handleMemoChange('back', e.target.value)}
+                    placeholder="メモ（任意）"
+                    className="form-input w-full text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleClearBack}
+                    className="w-full mt-2 px-3 py-1.5 bg-kokiake/10 border border-kokiake/30 rounded text-xs text-kokiake hover:bg-kokiake hover:text-white hover:border-kokiake transition-colors flex items-center justify-center gap-1"
+                  >
+                    <span>🔄</span>
+                    <span>撮り直す</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Additional photos section */}
+              <div className="border-t border-usuzumi/20 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium">追加写真（任意）</span>
+                  <span className="text-xs text-ginnezumi">気になる箇所など</span>
+                </div>
+
+                {/* Additional photos list */}
+                {additionalPhotos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {additionalPhotos.map((photo, index) => (
+                      <div key={index}>
+                        <div className="aspect-square bg-shironeri border border-usuzumi/20 overflow-hidden relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.url} alt={`追加${index + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAdditional(index)}
+                            className="absolute top-1 right-1 w-5 h-5 bg-sumi/70 text-white flex items-center justify-center text-xs hover:bg-sumi"
+                            aria-label={`追加写真${index + 1}を削除`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={photo.memo || ''}
+                          onChange={(e) => handleMemoChange(index, e.target.value)}
+                          placeholder="メモ"
+                          className="form-input w-full text-xs mt-1"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add additional photo button */}
+                <button
+                  type="button"
+                  onClick={() => setCaptureTarget('additional')}
+                  className="w-full py-3 border-2 border-dashed border-usuzumi/30 text-ginnezumi hover:border-shu hover:text-shu transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="text-lg">📷</span>
+                  <span className="text-sm">追加写真を撮影</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ナビゲーション */}
-      <div className="flex gap-3">
-        {onBack && (
+      {/* Action button (bottom fixed) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gofun border-t border-usuzumi/20 p-4">
+        <div className="flex gap-3">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="btn-secondary"
+            >
+              ← 戻る
+            </button>
+          )}
           <button
             type="button"
-            onClick={onBack}
-            className="btn-secondary flex-1"
+            onClick={onNext}
+            disabled={!canProceed}
+            className="btn-primary flex-1 text-lg py-4"
           >
-            戻る
+            商品情報を入力 →
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={!canProceed}
-          className="btn-primary flex-1"
-        >
-          次へ
-        </button>
+        </div>
       </div>
-
-      {!canProceed && (
-        <p className="text-xs text-ginnezumi text-center">
-          表面と裏面の両方を撮影してください
-        </p>
-      )}
     </div>
   );
 }

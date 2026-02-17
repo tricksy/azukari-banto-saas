@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { usePersistedState, STORAGE_KEYS } from '@/hooks/usePersistedState';
-import { ItemCard } from '@/components/worker/ItemCard';
+import { ProductTypeLabel } from '@/types';
 import { ReturnAcceptModal } from '@/components/worker/ReturnAcceptModal';
 import { ItemDetailModal } from '@/components/worker/ItemDetailModal';
 import type { ItemStatus } from '@/types';
@@ -17,52 +16,72 @@ interface ItemData {
   product_name: string;
   status: ItemStatus;
   is_claim_active?: boolean;
+  is_paid_storage?: boolean;
   photo_front_url?: string;
+  photo_back_url?: string;
+  additional_photos?: string;
   created_at: string;
   scheduled_ship_date?: string;
   scheduled_return_date?: string;
+  vendor_id?: string;
   vendor_name?: string;
   vendor_tracking_number?: string;
   vendor_carrier?: string;
   return_from_vendor_date?: string;
   condition_note?: string;
+  ship_to_vendor_date?: string;
 }
 
-type Tab = 'processing' | 'returned';
+interface VendorData {
+  id: string;
+  vendor_id: string;
+  name: string;
+}
 
-const statusByTab: Record<Tab, string> = {
-  processing: 'processing',
-  returned: 'returned',
-};
+/** 経過日数を計算 */
+function getDaysElapsed(dateStr: string | undefined): number | null {
+  if (!dateStr) return null;
+  const shipDate = new Date(dateStr);
+  const today = new Date();
+  const diffTime = today.getTime() - shipDate.getTime();
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/** 預かり番号の短縮表示 */
+function shortenItemNumber(itemNumber: string): string {
+  const parts = itemNumber.split('-');
+  if (parts.length >= 3) {
+    return `${parts[0]}-${itemNumber.slice(-9)}`;
+  }
+  return itemNumber;
+}
 
 export default function WorkerReturnsPage() {
-  const [activeTab, setActiveTab] = usePersistedState<Tab>(
-    STORAGE_KEYS.WORKER_RETURNS_TAB,
-    'processing'
-  );
   const [items, setItems] = useState<ItemData[]>([]);
+  const [vendors, setVendors] = useState<VendorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Selection state
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // 検索・フィルタ
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedVendorId, setSelectedVendorId] = useState('');
 
   // Modal states
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<ItemData | null>(null);
   const [detailItemNumber, setDetailItemNumber] = useState<string | null>(null);
 
-  const fetchItems = useCallback(async (tab: Tab) => {
+  const fetchItems = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const statusParam = statusByTab[tab];
-      const res = await fetch(`/api/items?status=${statusParam}&limit=100`);
+      const res = await fetch('/api/items?status=processing&limit=100');
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || '商品の取得に失敗しました');
       }
       const data = await res.json();
-      setItems(data.items || []);
+      setItems((data.items || []).filter((item: ItemData) => item.item_number));
     } catch (err) {
       setError(err instanceof Error ? err.message : '商品の取得に失敗しました');
       setItems([]);
@@ -71,172 +90,195 @@ export default function WorkerReturnsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    setSelectedIds(new Set());
-    fetchItems(activeTab);
-  }, [activeTab, fetchItems]);
-
-  const handleTabChange = (tab: Tab) => {
-    setActiveTab(tab);
-  };
-
-  const handleToggleSelect = (itemNumber: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemNumber)) {
-        next.delete(itemNumber);
-      } else {
-        next.add(itemNumber);
+  const fetchVendors = useCallback(async () => {
+    try {
+      const res = await fetch('/api/vendors');
+      if (res.ok) {
+        const data = await res.json();
+        setVendors(data.vendors || []);
       }
-      return next;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedIds.size === items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(items.map((item) => item.item_number)));
+    } catch {
+      // silent
     }
-  };
+  }, []);
 
-  const selectedItems = items.filter((item) => selectedIds.has(item.item_number));
+  useEffect(() => {
+    fetchVendors();
+    fetchItems();
+  }, [fetchVendors, fetchItems]);
+
+  // 検索・業者フィルタ
+  const filteredItems = items.filter((item) => {
+    // 業者フィルタ（vendor_idはUUID）
+    if (selectedVendorId && item.vendor_id !== selectedVendorId) {
+      return false;
+    }
+    // テキスト検索
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      item.item_number.toLowerCase().includes(query) ||
+      item.customer_name?.toLowerCase().includes(query) ||
+      item.vendor_name?.toLowerCase().includes(query) ||
+      false
+    );
+  });
+
+  // 返却モーダルを開く
+  const openReturnModal = (item: ItemData) => {
+    setSelectedItem(item);
+    setShowReturnModal(true);
+  };
 
   const handleSuccess = () => {
-    setSelectedIds(new Set());
-    fetchItems(activeTab);
+    setSelectedItem(null);
+    fetchItems();
   };
 
-  const tabs = [
-    { key: 'processing' as Tab, label: '加工中' },
-    { key: 'returned' as Tab, label: '返却済' },
-  ];
-
   return (
-    <div className="p-4 space-y-4 pb-24">
-      <h2 className="text-xl font-mincho text-sumi">業者からの返却</h2>
+    <div className="p-6 pb-32">
+      <header className="mb-8">
+        <div className="flex items-start gap-3">
+          <div className="w-1 h-12 bg-shu shrink-0 mt-1"></div>
+          <div>
+            <h1 className="text-2xl font-mincho text-sumi tracking-wide">業者からの返却</h1>
+            <p className="text-sm text-ginnezumi mt-1">加工後の写真撮影・返送予定日の設定</p>
+          </div>
+        </div>
+      </header>
 
-      {/* タブ */}
-      <div className="flex border-b border-usuzumi/20">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={`px-4 py-2 text-sm border-b-2 transition-colors ${
-              activeTab === tab.key
-                ? 'border-shu text-shu'
-                : 'border-transparent text-ginnezumi hover:text-aitetsu'
-            }`}
-          >
-            {tab.label}
-            {!isLoading && activeTab === tab.key && (
-              <span className="ml-1 text-xs">({items.length})</span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* 検索・フィルタ */}
+      <section className="card mb-6">
+        <div className="card-body">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <select
+              value={selectedVendorId}
+              onChange={(e) => setSelectedVendorId(e.target.value)}
+              className="form-select sm:w-48 input"
+            >
+              <option value="">すべての業者</option>
+              {vendors.map((vendor) => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input flex-1"
+              placeholder="預かり番号・顧客名で検索"
+            />
+          </div>
+        </div>
+      </section>
 
       {/* エラー */}
       {error && (
-        <div className="text-sm text-kokiake bg-kokiake/10 p-3">
+        <div className="text-sm text-kokiake bg-kokiake/10 p-3 mb-4">
           {error}
         </div>
       )}
 
-      {/* 全選択 (processing tab only) */}
-      {!isLoading && items.length > 0 && activeTab === 'processing' && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSelectAll}
-            className="text-xs text-aitetsu hover:text-shu transition-colors"
-          >
-            {selectedIds.size === items.length ? '全選択解除' : '全て選択'}
-          </button>
-          {selectedIds.size > 0 && (
-            <span className="text-xs text-ginnezumi">
-              {selectedIds.size} 件選択中
-            </span>
-          )}
-        </div>
-      )}
+      {/* 商品リスト（カード形式） */}
+      <section className="space-y-3">
+        {isLoading ? (
+          <div className="card p-8 text-center text-ginnezumi">読み込み中...</div>
+        ) : filteredItems.length === 0 ? (
+          <div className="card p-8 text-center text-ginnezumi">加工中の商品はありません</div>
+        ) : (
+          filteredItems.map((item) => {
+            const shortItemNumber = shortenItemNumber(item.item_number);
+            const daysElapsed = getDaysElapsed(item.ship_to_vendor_date);
+            const isOverdue = daysElapsed !== null && daysElapsed > 14;
 
-      {/* コンテンツ */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 bg-shironeri animate-pulse" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="text-center py-12 text-ginnezumi text-sm">
-          {activeTab === 'processing'
-            ? '加工中の商品はありません'
-            : '返却済の商品はありません'}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <div key={item.item_number} className="flex items-start gap-2">
-              {/* Checkbox (processing tab only) */}
-              {activeTab === 'processing' && (
-                <div className="flex-shrink-0 pt-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(item.item_number)}
-                    onChange={() => handleToggleSelect(item.item_number)}
-                    className="w-4 h-4 accent-shu"
-                    aria-label={`${item.product_name} を選択`}
-                  />
+            return (
+              <div
+                key={item.item_number}
+                onClick={() => openReturnModal(item)}
+                className={`card p-3 cursor-pointer hover:bg-shironeri active:bg-shu/10 ${
+                  isOverdue ? 'border-l-4 border-l-kokiake' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {/* サムネイル */}
+                  <div className="flex gap-1 flex-shrink-0">
+                    <div className="w-12 h-12 bg-shironeri flex items-center justify-center overflow-hidden">
+                      {item.photo_front_url ? (
+                        <img
+                          src={item.photo_front_url}
+                          alt="表"
+                          className="w-12 h-12 object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs text-ginnezumi">表</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 情報 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0">
+                        {item.partner_name && (
+                          <div className="text-xs text-ginnezumi truncate">{item.partner_name}</div>
+                        )}
+                        <div className="font-medium text-base truncate">
+                          {item.customer_name || '顧客未設定'}
+                        </div>
+                      </div>
+                      <span className="text-xs px-1.5 py-0.5 bg-kinari text-aitetsu flex-shrink-0">
+                        {ProductTypeLabel[item.product_type] || item.product_type}
+                      </span>
+                      {item.is_paid_storage && (
+                        <span className="text-xs px-1.5 py-0.5 bg-oudo/20 text-oudo border border-oudo/30 flex-shrink-0">
+                          有料
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-ginnezumi mt-1">
+                      <span className="font-mono">{shortItemNumber}</span>
+                      <span>業者: {item.vendor_name || '-'}</span>
+                    </div>
+                    <div className={`text-xs mt-1 ${isOverdue ? 'text-kokiake font-medium' : 'text-ginnezumi'}`}>
+                      経過: {daysElapsed !== null ? `${daysElapsed}日` : '-'}
+                    </div>
+                  </div>
+
+                  {/* 矢印 */}
+                  <svg
+                    className="w-5 h-5 text-ginnezumi flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
                 </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <ItemCard
-                  item={item}
-                  onClick={() => setDetailItemNumber(item.item_number)}
-                />
-                {/* Vendor info for processing items */}
-                {activeTab === 'processing' && item.vendor_name && (
-                  <div className="mt-1 px-3 text-xs text-ginnezumi flex items-center gap-2">
-                    <span>業者: {item.vendor_name}</span>
-                    {item.vendor_tracking_number && (
-                      <span className="font-mono">伝票: {item.vendor_tracking_number}</span>
-                    )}
-                  </div>
-                )}
-                {/* Return info for returned items */}
-                {activeTab === 'returned' && item.return_from_vendor_date && (
-                  <div className="mt-1 px-3 text-xs text-ginnezumi">
-                    返却日: {new Date(item.return_from_vendor_date).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'short', day: 'numeric' })}
-                  </div>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })
+        )}
+      </section>
+
+      {/* 件数表示 */}
+      {!isLoading && filteredItems.length > 0 && (
+        <div className="mt-3 text-sm text-ginnezumi text-right">
+          全{filteredItems.length}件
         </div>
       )}
 
-      {/* Fixed action bar */}
-      {activeTab === 'processing' && selectedIds.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-kinari border-t border-usuzumi/20 p-4 shadow-lg z-40">
-          <div className="max-w-lg mx-auto flex items-center justify-between">
-            <span className="text-sm text-sumi">
-              {selectedIds.size} 件選択中
-            </span>
-            <button
-              onClick={() => setShowReturnModal(true)}
-              className="btn-primary"
-            >
-              返却受入
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Return Accept Modal */}
+      {/* 返却受入モーダル */}
       <ReturnAcceptModal
         isOpen={showReturnModal}
         onClose={() => setShowReturnModal(false)}
-        selectedItems={selectedItems}
+        selectedItem={selectedItem}
         onSuccess={handleSuccess}
       />
 

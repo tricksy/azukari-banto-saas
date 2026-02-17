@@ -1,6 +1,6 @@
 'use client';
 
-import { ProductTypeLabel } from '@/types';
+import { ProductTypeLabel, ProcessingTypeLabel } from '@/types';
 import type { WizardItem } from './ReceptionWizard';
 
 // ============================================
@@ -11,9 +11,23 @@ interface StepConfirmProps {
   items: WizardItem[];
   customerName?: string;
   partnerName?: string;
+  notes: string;
+  onNotesChange: (notes: string) => void;
   onConfirm: () => void;
   onBack: () => void;
   isSubmitting: boolean;
+}
+
+// ============================================
+// Helpers
+// ============================================
+
+function getProductTypeLabel(value: string): string {
+  return ProductTypeLabel[value] || value || '未設定';
+}
+
+function getRequestTypeLabel(value: string): string {
+  return ProcessingTypeLabel[value] || value || '';
 }
 
 // ============================================
@@ -24,6 +38,8 @@ export function StepConfirm({
   items,
   customerName,
   partnerName,
+  notes,
+  onNotesChange,
   onConfirm,
   onBack,
   isSubmitting,
@@ -33,102 +49,99 @@ export function StepConfirm({
   );
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="font-mincho text-sumi">登録内容の確認</h3>
-      </div>
-      <div className="card-body">
-        {/* Customer info */}
-        <div className="mb-6 pb-4 border-b border-usuzumi/20">
-          <h4 className="text-sm font-medium text-aitetsu mb-2">顧客情報</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
+    <div className="space-y-6">
+      <div className="card">
+        <div className="card-header"><h2 className="text-lg">登録内容の確認</h2></div>
+        <div className="card-body space-y-4">
+          {/* Partner */}
+          {partnerName && (
             <div>
-              <span className="text-ginnezumi">顧客名:</span>
-              <span className="text-sumi ml-2">{customerName || '未選択'}</span>
+              <h3 className="text-sm text-ginnezumi">取引先</h3>
+              <p className="font-medium">{partnerName}</p>
             </div>
-            {partnerName && (
-              <div>
-                <span className="text-ginnezumi">取引先:</span>
-                <span className="text-sumi ml-2">{partnerName}</span>
-              </div>
-            )}
-          </div>
-        </div>
+          )}
 
-        {/* Items list */}
-        <div className="mb-6">
-          <h4 className="text-sm font-medium text-aitetsu mb-3">
-            登録商品（{items.length}点）
-          </h4>
-          <div className="space-y-3">
-            {items.map((item, index) => {
-              const typeLabel = ProductTypeLabel[item.productType] || item.productType || '未設定';
-              return (
-                <div
-                  key={index}
-                  className="border border-usuzumi/20 p-3 flex gap-3"
-                >
-                  {/* Thumbnail */}
-                  <div className="flex-shrink-0 w-16 h-16 bg-shironeri border border-usuzumi/20 flex items-center justify-center">
-                    {item.photoFrontUrl ? (
-                      <img
-                        src={item.photoFrontUrl}
-                        alt={`商品${index + 1}の写真`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <svg className="w-6 h-6 text-ginnezumi" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="square" strokeLinejoin="miter" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
-                      </svg>
+          {/* Customer */}
+          <div>
+            <h3 className="text-sm text-ginnezumi">顧客</h3>
+            <p className="font-medium">{customerName || '未選択'}</p>
+          </div>
+
+          {/* Items */}
+          <div>
+            <h3 className="text-sm text-ginnezumi">商品（{items.length}点）</h3>
+            <div className="mt-2 space-y-2">
+              {items.map((item, index) => (
+                <div key={index} className="flex items-center gap-3 p-2 bg-shironeri">
+                  <div className="flex gap-1">
+                    {item.photoFrontUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.photoFrontUrl} alt="表面" className="w-12 h-16 object-cover" />
+                    )}
+                    {item.photoBackUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.photoBackUrl} alt="裏面" className="w-12 h-16 object-cover" />
                     )}
                   </div>
-
-                  {/* Item info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono bg-shu/10 text-shu px-1">
-                        {index + 1}
-                      </span>
-                      <span className="text-sm font-medium text-sumi">{typeLabel}</span>
-                      {item.productName && (
-                        <span className="text-sm text-aitetsu">{item.productName}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{getProductTypeLabel(item.productType)}</span>
+                      {item.productName && <span>{item.productName}</span>}
+                      {item.requestType && (
+                        <span className="text-sm text-ginnezumi">
+                          （{getRequestTypeLabel(item.requestType)}）
+                        </span>
+                      )}
+                      {item.isPaidStorage && (
+                        <span className="inline-block px-2 py-0.5 text-xs bg-oudo/20 text-oudo border border-oudo/30">
+                          有料預かり
+                        </span>
                       )}
                     </div>
-                    {item.requestType && (
-                      <p className="text-xs text-ginnezumi mt-1">
-                        加工: {item.requestType}
-                      </p>
-                    )}
-                    {item.conditionNote && (
-                      <p className="text-xs text-ginnezumi mt-0.5 truncate">
-                        状態: {item.conditionNote}
-                      </p>
-                    )}
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+
+          {/* Notes (editable) */}
+          <div>
+            <label className="text-sm text-ginnezumi">備考</label>
+            <textarea
+              value={notes}
+              onChange={(e) => onNotesChange(e.target.value)}
+              placeholder="受付に関する備考"
+              className="form-input w-full h-20"
+            />
           </div>
         </div>
+      </div>
 
-        {/* Validation warning */}
-        {hasValidationError && (
-          <div className="mb-4 p-3 bg-kokiake/10 border border-kokiake/30 text-kokiake text-sm">
-            商品種別と商品名が未入力の商品があります。戻って入力してください。
+      {/* Validation warning */}
+      {hasValidationError && (
+        <div className="card border-kokiake/30">
+          <div className="card-body">
+            <p className="text-sm text-kokiake">
+              商品種別と商品名が未入力の商品があります。戻って入力してください。
+            </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Buttons */}
-        <div className="flex justify-between pt-4 border-t border-usuzumi/20">
+      {/* Action buttons (bottom fixed) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gofun border-t border-usuzumi/20 p-4">
+        <div className="flex gap-3">
           <button
+            type="button"
             className="btn-secondary"
             onClick={onBack}
             disabled={isSubmitting}
           >
-            戻る
+            ← 戻る
           </button>
           <button
-            className="btn-primary"
+            type="button"
+            className="btn-primary flex-1"
             onClick={onConfirm}
             disabled={isSubmitting || hasValidationError}
           >

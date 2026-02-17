@@ -1,6 +1,6 @@
 'use client';
 
-import { ProductTypeLabel } from '@/types';
+import { ProductTypeLabel, ProcessingTypeLabel } from '@/types';
 import type { WizardItem } from './ReceptionWizard';
 
 // ============================================
@@ -10,9 +10,22 @@ import type { WizardItem } from './ReceptionWizard';
 interface StepAddMoreProps {
   items: WizardItem[];
   customerName?: string;
+  partnerName?: string;
   onAddMore: () => void;
   onFinish: () => void;
   onBack: () => void;
+}
+
+// ============================================
+// Helpers
+// ============================================
+
+function getProductTypeLabel(value: string): string {
+  return ProductTypeLabel[value] || value || '未設定';
+}
+
+function getRequestTypeLabel(value: string): string {
+  return ProcessingTypeLabel[value] || value || '';
 }
 
 // ============================================
@@ -22,71 +35,70 @@ interface StepAddMoreProps {
 export function StepAddMore({
   items,
   customerName,
+  partnerName,
   onAddMore,
   onFinish,
   onBack,
 }: StepAddMoreProps) {
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="font-mincho text-sumi">追加確認</h3>
-      </div>
-      <div className="card-body">
-        {/* Summary message */}
-        <div className="text-center mb-6">
-          <p className="text-lg text-sumi">
-            <span className="font-mono text-shu font-medium">{items.length}</span>
-            <span className="ml-1">点の商品を登録しました</span>
-          </p>
-          {customerName && (
-            <p className="text-sm text-aitetsu mt-1">
-              顧客: {customerName}
-            </p>
+    <div className="space-y-6">
+      <div className="card">
+        <div className="card-header">
+          <h2 className="text-lg">登録済み商品</h2>
+          {(partnerName || customerName) && (
+            <span className="text-sm text-ginnezumi">
+              紐付け先: {partnerName && <span>{partnerName} / </span>}
+              {customerName}
+            </span>
           )}
         </div>
-
-        {/* Registered items list */}
-        <div className="border border-usuzumi/20 divide-y divide-usuzumi/20 mb-6">
-          {items.map((item, index) => {
-            const typeLabel = ProductTypeLabel[item.productType] || item.productType || '未設定';
-            return (
-              <div key={index} className="flex items-center gap-3 px-4 py-3">
-                <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-shu/10 text-shu text-xs font-mono">
-                  {index + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-sumi">{typeLabel}</span>
-                  {item.productName && (
-                    <span className="text-sm text-aitetsu ml-2">{item.productName}</span>
+        <div className="card-body">
+          <div className="space-y-3">
+            {items.map((item, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 bg-shironeri">
+                {item.photoFrontUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.photoFrontUrl} alt="" className="w-16 h-20 object-cover rounded" />
+                )}
+                <div className="flex-1">
+                  <div className="font-medium">
+                    {getProductTypeLabel(item.productType)} - {item.productName}
+                  </div>
+                  {item.requestType && (
+                    <div className="text-sm text-ginnezumi">
+                      {getRequestTypeLabel(item.requestType)}
+                    </div>
                   )}
                 </div>
-                {item.requestType && (
-                  <span className="text-xs text-ginnezumi flex-shrink-0">
-                    {item.requestType}
-                  </span>
-                )}
+                <span className="text-sm text-ginnezumi">{i + 1}点目</span>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <button className="btn-secondary flex-1" onClick={onAddMore}>
-              もう1点追加する
-            </button>
-            <button className="btn-primary flex-1" onClick={onFinish}>
-              登録を完了する
-            </button>
+            ))}
           </div>
-          <button
-            className="text-sm text-ginnezumi hover:text-aitetsu text-center mt-2"
-            onClick={onBack}
-          >
-            戻る
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-body text-center py-6">
+          <p className="text-lg">商品を追加しますか？</p>
+        </div>
+      </div>
+
+      {/* Action buttons (bottom fixed) */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gofun border-t border-usuzumi/20 p-4">
+        <div className="flex gap-3">
+          <button className="btn-secondary flex-1" onClick={onAddMore}>
+            + 追加する
+          </button>
+          <button className="btn-primary flex-1" onClick={onFinish}>
+            確認へ進む →
           </button>
         </div>
+        <button
+          className="text-sm text-ginnezumi hover:text-aitetsu text-center mt-3 w-full"
+          onClick={onBack}
+        >
+          ← 戻る
+        </button>
       </div>
     </div>
   );

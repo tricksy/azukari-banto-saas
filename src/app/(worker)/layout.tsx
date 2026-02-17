@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getSession } from '@/lib/auth';
 import { WorkerHeader } from '@/components/worker/Header';
+import { BottomNav } from '@/components/worker/BottomNav';
 import { headers } from 'next/headers';
 
 export const metadata: Metadata = {
@@ -26,7 +27,8 @@ export default async function WorkerLayout({
         workerName={session?.name}
         tenantName={session?.tenantName}
       />
-      <main>{children}</main>
+      <main className="pb-16">{children}</main>
+      {session && <BottomNav />}
     </div>
   );
 }

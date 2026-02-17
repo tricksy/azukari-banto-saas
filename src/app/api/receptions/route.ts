@@ -102,6 +102,8 @@ export async function POST(request: NextRequest) {
     condition_note: item.condition_note || null,
     request_type: item.request_type || null,
     request_detail: item.request_detail || null,
+    vendor_id: item.vendor_id || null,
+    vendor_name: item.vendor_name || null,
     scheduled_ship_date: item.scheduled_ship_date || null,
     is_paid_storage: item.is_paid_storage || false,
     photo_front_url: item.photo_front_url || null,

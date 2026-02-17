@@ -31,6 +31,7 @@ interface ShipToVendorModalProps {
   onClose: () => void;
   selectedItems: SelectedItem[];
   onSuccess: () => void;
+  activeTab?: 'pending_ship' | 'rework';
 }
 
 function formatToday(): string {
@@ -47,7 +48,10 @@ export function ShipToVendorModal({
   onClose,
   selectedItems,
   onSuccess,
+  activeTab = 'pending_ship',
 }: ShipToVendorModalProps) {
+  const isRework = activeTab === 'rework';
+  const modalTitle = isRework ? '再発送登録' : '発送登録';
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState('');
@@ -145,7 +149,7 @@ export function ShipToVendorModal({
     setIsSubmitting(false);
 
     if (failCount === 0) {
-      toast.success(`${successCount}件の商品を業者へ発送しました`);
+      toast.success(`${successCount}件の商品を${isRework ? '再発送' : '発送'}登録しました`);
       onClose();
       onSuccess();
     } else if (successCount > 0) {
@@ -168,13 +172,21 @@ export function ShipToVendorModal({
   }));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="業者へ発送" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} size="lg">
       <div className="space-y-4">
         {/* エラー表示 */}
         {error && (
           <div className="p-3 bg-kokiake/10 border border-kokiake/30 text-kokiake text-sm">
             {error}
           </div>
+        )}
+
+        {/* 説明文 */}
+        <p className="text-sm text-ginnezumi">
+          {selectedItems.length}件の商品を{isRework ? '再発送' : '発送'}登録します
+        </p>
+        {isRework && (
+          <p className="text-sm text-kokiake">※ 再加工のため業者へ再発送します</p>
         )}
 
         {/* 選択商品サマリー */}
@@ -196,29 +208,33 @@ export function ShipToVendorModal({
 
         {/* 業者選択 */}
         <Select
-          label="業者"
+          label="発注先業者"
           options={vendorOptions}
-          placeholder={vendorsLoading ? '読み込み中...' : '業者を選択'}
+          placeholder={vendorsLoading ? '読み込み中...' : '選択してください'}
           value={selectedVendorId}
           onChange={(e) => setSelectedVendorId(e.target.value)}
           disabled={vendorsLoading}
           required
         />
 
-        {/* 選択した業者の情報表示 */}
+        {/* 選択した業者の発送先情報 */}
         {selectedVendor && (
-          <div className="p-3 bg-kinari/50 border border-usuzumi/20 text-sm space-y-1">
-            <p className="font-medium text-sumi">{selectedVendor.name}</p>
-            {selectedVendor.address ? (
-              <p className="text-aitetsu">
-                {selectedVendor.postal_code && `〒${selectedVendor.postal_code} `}
-                {selectedVendor.address}
-              </p>
-            ) : (
-              <p className="text-oudo">住所が未登録です</p>
+          <div className="bg-shironeri p-3 text-sm">
+            <p className="font-medium text-sumi mb-1">発送先</p>
+            <p className="text-aitetsu">{selectedVendor.name}</p>
+            {selectedVendor.postal_code && (
+              <p className="text-ginnezumi">〒{selectedVendor.postal_code}</p>
+            )}
+            {selectedVendor.address && (
+              <p className="text-ginnezumi">{selectedVendor.address}</p>
             )}
             {selectedVendor.phone && (
-              <p className="text-aitetsu">TEL: {selectedVendor.phone}</p>
+              <p className="text-ginnezumi">TEL: {selectedVendor.phone}</p>
+            )}
+            {!selectedVendor.address && (
+              <p className="text-kokiake text-xs mt-1">
+                ※ 住所が未登録です。管理画面から登録してください。
+              </p>
             )}
           </div>
         )}
@@ -232,29 +248,33 @@ export function ShipToVendorModal({
           required
         />
 
-        {/* 送り状番号 */}
-        <Input
-          label="送り状番号（任意）"
-          type="text"
-          value={trackingNumber}
-          onChange={(e) => setTrackingNumber(e.target.value)}
-          placeholder="例: 1234-5678-9012"
-        />
+        {/* 送り状情報（任意） */}
+        <div className="border-t border-usuzumi/20 pt-4 mt-4">
+          <p className="text-sm text-ginnezumi mb-3">送り状情報（任意）</p>
+          <div className="space-y-4">
+            <Input
+              label="送り状番号"
+              type="text"
+              value={trackingNumber}
+              onChange={(e) => setTrackingNumber(e.target.value)}
+              placeholder="例: 1234-5678-9012"
+            />
 
-        {/* 配送業者 */}
-        <Select
-          label="配送業者（任意）"
-          options={carrierOptions}
-          placeholder="選択してください"
-          value={carrier}
-          onChange={(e) => setCarrier(e.target.value as CarrierType | '')}
-        />
+            <Select
+              label="配送業者"
+              options={carrierOptions}
+              placeholder="選択してください"
+              value={carrier}
+              onChange={(e) => setCarrier(e.target.value as CarrierType | '')}
+            />
+          </div>
+        </div>
 
         {/* アクションボタン */}
         <div className="flex gap-3 justify-end pt-2">
           <button
             onClick={onClose}
-            className="btn-secondary"
+            className="btn-outline"
             disabled={isSubmitting}
           >
             キャンセル
@@ -264,7 +284,7 @@ export function ShipToVendorModal({
             className="btn-primary"
             disabled={isSubmitting || !selectedVendorId || !shipDate}
           >
-            {isSubmitting ? '処理中...' : `${selectedItems.length}件を発送`}
+            {isSubmitting ? '処理中...' : modalTitle}
           </button>
         </div>
       </div>

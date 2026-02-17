@@ -31,10 +31,11 @@ export interface WizardItem {
   productName: string;
   color?: string;
   material?: string;
-  size?: string;
   conditionNote?: string;
   requestType?: string;
   requestDetail?: string;
+  vendorId?: string;
+  vendorName?: string;
   scheduledShipDate?: string;
   isPaidStorage?: boolean;
 }
@@ -49,9 +50,12 @@ export interface WizardState {
   customerNameKana?: string;
   partnerId?: string;
   partnerName?: string;
+  // Notes
+  notes?: string;
   // Result
   receptionNumber?: string;
   itemNumbers?: string[];
+  itemProductNames?: string[];
 }
 
 // ============================================
@@ -67,79 +71,85 @@ function createEmptyItem(): WizardItem {
 }
 
 const STEP_LABELS = [
-  { key: 'photo', label: '写真撮影' },
-  { key: 'itemDetails', label: '商品情報' },
-  { key: 'customer', label: '顧客選択' },
-  { key: 'addMore', label: '追加確認' },
+  { key: 'photo', label: '撮影' },
+  { key: 'itemDetails', label: '商品' },
+  { key: 'customer', label: '顧客' },
   { key: 'confirm', label: '確認' },
-  { key: 'complete', label: '完了' },
 ] as const;
 
-function getStepNumber(step: WizardState['step']): number {
-  const index = STEP_LABELS.findIndex((s) => s.key === step);
-  return index + 1;
+function getStepIndex(step: WizardState['step']): number {
+  switch (step) {
+    case 'photo': return 0;
+    case 'itemDetails': return 1;
+    case 'customer': return 2;
+    case 'addMore': return 2; // 顧客と同じ位置
+    case 'confirm': return 3;
+    case 'complete': return 4;
+    default: return 0;
+  }
 }
 
 // ============================================
 // Step Indicator
 // ============================================
 
-function StepIndicator({ currentStep }: { currentStep: WizardState['step'] }) {
-  const currentNumber = getStepNumber(currentStep);
+function StepIndicator({ currentStep, itemCount }: { currentStep: WizardState['step']; itemCount: number }) {
+  const currentIndex = getStepIndex(currentStep);
 
   return (
-    <nav aria-label="受付ステップ" className="mb-8">
-      <ol className="flex items-center justify-between">
-        {STEP_LABELS.map((step, index) => {
-          const stepNumber = index + 1;
-          const isActive = stepNumber === currentNumber;
-          const isCompleted = stepNumber < currentNumber;
+    <div className="mb-6">
+      {/* ステップ表示 */}
+      <div className="flex items-start">
+        {STEP_LABELS.map((step, i) => (
+          <div key={step.key} className="flex-1 flex flex-col items-center">
+            <div className="flex items-center w-full">
+              {/* 左側の線 */}
+              <div
+                className={`flex-1 h-0.5 ${
+                  i === 0 ? 'bg-transparent' : currentIndex >= i ? 'bg-shu' : 'bg-usuzumi/30'
+                }`}
+              />
 
-          return (
-            <li key={step.key} className="flex items-center flex-1 last:flex-0">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`
-                    w-8 h-8 flex items-center justify-center text-sm font-mono
-                    border
-                    ${isActive
-                      ? 'bg-shu text-white border-shu'
-                      : isCompleted
-                        ? 'bg-shu/10 text-shu border-shu/30'
-                        : 'bg-shironeri text-ginnezumi border-usuzumi/20'
-                    }
-                  `}
-                >
-                  {isCompleted ? (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="square" strokeLinejoin="miter" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    stepNumber
-                  )}
-                </div>
-                <span
-                  className={`
-                    text-xs mt-1 whitespace-nowrap
-                    ${isActive ? 'text-shu font-medium' : isCompleted ? 'text-aitetsu' : 'text-ginnezumi'}
-                  `}
-                >
-                  {step.label}
-                </span>
+              {/* ステップ番号 */}
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${
+                  currentIndex >= i
+                    ? 'bg-shu text-white'
+                    : 'bg-shironeri text-ginnezumi border border-usuzumi/30'
+                }`}
+              >
+                {i + 1}
               </div>
-              {index < STEP_LABELS.length - 1 && (
-                <div
-                  className={`
-                    flex-1 h-px mx-2 mt-[-1rem]
-                    ${stepNumber < currentNumber ? 'bg-shu/30' : 'bg-usuzumi/20'}
-                  `}
-                />
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
+
+              {/* 右側の線 */}
+              <div
+                className={`flex-1 h-0.5 ${
+                  i === STEP_LABELS.length - 1
+                    ? 'bg-transparent'
+                    : currentIndex > i ? 'bg-shu' : 'bg-usuzumi/30'
+                }`}
+              />
+            </div>
+
+            {/* ステップラベル */}
+            <span
+              className={`text-xs mt-1 whitespace-nowrap ${
+                currentIndex >= i ? 'text-sumi font-medium' : 'text-ginnezumi'
+              }`}
+            >
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* 登録済み商品数 */}
+      {itemCount > 0 && (
+        <div className="text-right text-sm text-ginnezumi mt-2">
+          登録済: {itemCount}点
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -323,10 +333,11 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
         product_name: item.productName,
         color: item.color || undefined,
         material: item.material || undefined,
-        size: item.size || undefined,
         condition_note: item.conditionNote || undefined,
         request_type: item.requestType || undefined,
         request_detail: item.requestDetail || undefined,
+        vendor_id: item.vendorId || undefined,
+        vendor_name: item.vendorName || undefined,
         scheduled_ship_date: item.scheduledShipDate || undefined,
         is_paid_storage: item.isPaidStorage || false,
         photo_front_url: uploadResults[index].frontUrl || item.photoFrontUrl || undefined,
@@ -356,6 +367,7 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
             customer_name: state.customerName,
             partner_id: state.partnerId || undefined,
             partner_name: state.partnerName || undefined,
+            notes: state.notes || undefined,
           }),
         });
 
@@ -371,7 +383,7 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
         const res = await fetch('/api/receptions/draft', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: apiItems }),
+          body: JSON.stringify({ items: apiItems, notes: state.notes || undefined }),
         });
 
         if (!res.ok) {
@@ -388,6 +400,7 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
         step: 'complete',
         receptionNumber,
         itemNumbers,
+        itemProductNames: prev.items.map((item) => item.productName),
       }));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -397,7 +410,7 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [state.items, state.customerId, state.customerName, state.partnerId, state.partnerName, workerId]);
+  }, [state.items, state.customerId, state.customerName, state.partnerId, state.partnerName, state.notes, workerId]);
 
   const handleNewReception = useCallback(() => {
     setState({
@@ -432,7 +445,7 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
 
   return (
     <div>
-      <StepIndicator currentStep={state.step} />
+      <StepIndicator currentStep={state.step} itemCount={state.items.filter(i => i.photoFrontUrl).length} />
 
       {state.step === 'photo' && (() => {
         const currentItem = state.items[state.currentItemIndex];
@@ -484,6 +497,7 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
         <StepAddMore
           items={state.items}
           customerName={state.customerName}
+          partnerName={state.partnerName}
           onAddMore={handleAddMore}
           onFinish={handleFinishAdding}
           onBack={handleAddMoreBack}
@@ -503,6 +517,8 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
             items={state.items}
             customerName={state.customerName}
             partnerName={state.partnerName}
+            notes={state.notes || ''}
+            onNotesChange={(notes) => setState((prev) => ({ ...prev, notes }))}
             onConfirm={handleConfirmSubmit}
             onBack={handleConfirmBack}
             isSubmitting={isSubmitting}
@@ -514,7 +530,7 @@ export function ReceptionWizard({ workerId }: ReceptionWizardProps) {
         <StepComplete
           receptionNumber={state.receptionNumber}
           itemNumbers={state.itemNumbers}
-          customerName={state.customerName}
+          itemProductNames={state.itemProductNames || []}
           onNewReception={handleNewReception}
           onGoToDashboard={handleGoToDashboard}
         />

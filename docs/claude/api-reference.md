@@ -137,19 +137,19 @@
 
 ---
 
-## 業務系（TODO - 未実装）
+## 業務系
 
-| エンドポイント | メソッド | 説明 |
-| -------------- | -------- | ---- |
-| /api/customers | GET/POST | 顧客検索・登録（partner_id対応） |
-| /api/partners | GET | 取引先一覧 |
-| /api/receptions | GET/POST | 受付情報取得・登録 |
-| /api/receptions/draft | POST | 下書き保存（顧客未設定での商品登録） |
-| /api/receptions/[receptionNumber]/customer | PATCH | 下書きへの顧客紐付け |
-| /api/items | GET/POST/PUT | 商品管理（ステータスフィルタ対応） |
-| /api/items/[itemNumber] | GET/PATCH | 商品詳細・更新（isClaimActive検証あり） |
-| /api/vendors | GET | 業者一覧 |
-| /api/settings | GET | テナント設定取得 |
+| エンドポイント | メソッド | 説明 | 状態 |
+| -------------- | -------- | ---- | ---- |
+| /api/customers | GET/POST | 顧客検索・登録（partner_id対応） | 実装済み |
+| /api/partners | GET | 取引先一覧 | 実装済み |
+| /api/receptions | GET/POST | 受付情報取得・登録 | 実装済み |
+| /api/receptions/draft | POST | 下書き保存（顧客未設定での商品登録） | 実装済み |
+| /api/receptions/[receptionNumber]/customer | PATCH | 下書きへの顧客紐付け | TODO - 未実装 |
+| /api/items | GET/POST/PUT | 商品管理（ステータスフィルタ対応） | 実装済み |
+| /api/items/[itemNumber] | GET/PATCH | 商品詳細・更新（isClaimActive検証あり） | 実装済み |
+| /api/vendors | GET | 業者一覧 | 実装済み |
+| /api/settings | GET | テナント設定取得 | 実装済み |
 
 ---
 
@@ -200,7 +200,7 @@
 {
   "name": "新規店舗",
   "slug": "C4D5",
-  "plan": "free"
+  "plan": "standard"
 }
 ```
 
@@ -208,7 +208,7 @@
 | ---------- | ---- | ---- |
 | name | ○ | 店舗名 |
 | slug | ○ | テナントID（4桁16進数: 0-9, A-F） |
-| plan | - | プラン（free/standard/premium、デフォルト: free） |
+| plan | - | プラン（standard/premium、デフォルト: standard） |
 
 **エラーレスポンス:**
 - `400` — バリデーションエラー（テナントIDが4桁hexでない等）
@@ -218,7 +218,7 @@
 ```json
 {
   "success": true,
-  "tenant": { "id": "uuid", "name": "新規店舗", "slug": "C4D5", "plan": "free", "status": "active" }
+  "tenant": { "id": "uuid", "name": "新規店舗", "slug": "C4D5", "plan": "standard", "status": "active" }
 }
 ```
 
