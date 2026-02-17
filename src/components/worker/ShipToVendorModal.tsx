@@ -111,7 +111,7 @@ export function ShipToVendorModal({
       try {
         const body: Record<string, string> = {
           status: 'processing',
-          vendor_id: selectedVendor.vendor_id,
+          vendor_id: selectedVendor.id,
           vendor_name: selectedVendor.name,
           ship_to_vendor_date: shipDate,
         };
