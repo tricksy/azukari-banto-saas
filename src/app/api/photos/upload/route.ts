@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { uploadToR2 } from '@/lib/r2';
 import { getSessionFromRequest } from '@/lib/auth';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -60,34 +60,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const supabase = createServiceClient();
-
-  // ストレージパスを生成
+  const buffer = Buffer.from(await file.arrayBuffer());
   const storagePath = `${session.tenantId}/${itemNumber}/${type}_${Date.now()}.webp`;
 
-  // Supabase Storageにアップロード
-  const { error: uploadError } = await supabase.storage
-    .from('item-photos')
-    .upload(storagePath, file, {
-      contentType: file.type,
-      upsert: true,
-    });
-
-  if (uploadError) {
-    console.error('[Photos/Upload] アップロード失敗:', uploadError);
+  try {
+    const url = await uploadToR2(storagePath, buffer, file.type);
+    return NextResponse.json({ success: true, url });
+  } catch (err) {
+    console.error('[Photos/Upload] アップロード失敗:', err);
     return NextResponse.json(
       { error: '写真のアップロードに失敗しました' },
       { status: 500 }
     );
   }
-
-  // 公開URLを取得
-  const { data: urlData } = supabase.storage
-    .from('item-photos')
-    .getPublicUrl(storagePath);
-
-  return NextResponse.json({
-    success: true,
-    url: urlData.publicUrl,
-  });
 }
