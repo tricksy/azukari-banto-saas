@@ -33,7 +33,6 @@ export default function AdminWorkersPage() {
   // 新規作成
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTenantId, setNewTenantId] = useState('');
-  const [newWorkerId, setNewWorkerId] = useState('');
   const [newName, setNewName] = useState('');
   const [newPin, setNewPin] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -99,7 +98,6 @@ export default function AdminWorkersPage() {
   const handleCreateOpen = () => {
     setIsCreateOpen(true);
     setNewTenantId(tenants[0]?.id || '');
-    setNewWorkerId('');
     setNewName('');
     setNewPin('');
     setNewEmail('');
@@ -107,8 +105,8 @@ export default function AdminWorkersPage() {
   };
 
   const handleCreate = async () => {
-    if (!newTenantId || !newWorkerId.trim() || !newName.trim() || !newPin) {
-      setCreateError('テナント、担当者ID、担当者名、PINは必須です');
+    if (!newTenantId || !newName.trim() || !newPin) {
+      setCreateError('テナント、担当者名、PINは必須です');
       return;
     }
     if (!/^\d{8}$/.test(newPin)) {
@@ -123,7 +121,6 @@ export default function AdminWorkersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tenant_id: newTenantId,
-          worker_id: newWorkerId.trim(),
           name: newName.trim(),
           pin: newPin,
           email: newEmail.trim() || undefined,
@@ -418,16 +415,6 @@ export default function AdminWorkersPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm text-aitetsu mb-1">担当者ID *</label>
-            <input
-              type="text"
-              className="input w-full font-mono"
-              value={newWorkerId}
-              onChange={(e) => setNewWorkerId(e.target.value)}
-              placeholder="例: T01"
-            />
-          </div>
-          <div>
             <label className="block text-sm text-aitetsu mb-1">担当者名 *</label>
             <input
               type="text"
@@ -473,7 +460,7 @@ export default function AdminWorkersPage() {
             <button
               className="btn-primary"
               onClick={handleCreate}
-              disabled={isSaving || !newTenantId || !newWorkerId.trim() || !newName.trim() || newPin.length !== 8}
+              disabled={isSaving || !newTenantId || !newName.trim() || newPin.length !== 8}
             >
               {isSaving ? '作成中...' : '作成'}
             </button>

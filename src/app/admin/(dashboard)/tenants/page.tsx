@@ -18,6 +18,7 @@ export default function AdminTenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [editPlan, setEditPlan] = useState<'standard' | 'premium'>('standard');
   const [editUrl, setEditUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -59,11 +60,13 @@ export default function AdminTenantsPage() {
 
   const handleEdit = (tenant: Tenant) => {
     setEditingTenant(tenant);
+    setEditPlan(tenant.plan === 'premium' ? 'premium' : 'standard');
     setEditUrl(tenant.redirect_url || '');
   };
 
   const handleCloseModal = () => {
     setEditingTenant(null);
+    setEditPlan('standard');
     setEditUrl('');
   };
 
@@ -76,6 +79,7 @@ export default function AdminTenantsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingTenant.id,
+          plan: editPlan,
           redirect_url: editUrl || null,
         }),
       });
@@ -86,7 +90,7 @@ export default function AdminTenantsPage() {
       setTenants((prev) =>
         prev.map((t) =>
           t.id === editingTenant.id
-            ? { ...t, redirect_url: editUrl || null }
+            ? { ...t, plan: editPlan, redirect_url: editUrl || null }
             : t
         )
       );
@@ -286,7 +290,7 @@ export default function AdminTenantsPage() {
                       className="border-b border-shironeri last:border-b-0"
                     >
                       <td className="px-4 py-3 text-sumi">
-                        {tenant.id.slice(0, 4).toUpperCase()} ({tenant.slug})
+                        {tenant.slug}
                       </td>
                       <td className="px-4 py-3 text-sumi">{tenant.name}</td>
                       <td className="px-4 py-3 text-sumi">{tenant.plan}</td>
@@ -353,7 +357,7 @@ export default function AdminTenantsPage() {
       <Modal
         isOpen={editingTenant !== null}
         onClose={handleCloseModal}
-        title="テナント分離設定"
+        title="テナント編集"
       >
         {editingTenant && (
           <div className="space-y-4">
@@ -369,6 +373,17 @@ export default function AdminTenantsPage() {
             <div>
               <label className="block text-sm text-aitetsu mb-1">店舗名</label>
               <p className="text-sumi">{editingTenant.name}</p>
+            </div>
+            <div>
+              <label className="block text-sm text-aitetsu mb-1">プラン</label>
+              <select
+                className="input w-full"
+                value={editPlan}
+                onChange={(e) => setEditPlan(e.target.value as 'standard' | 'premium')}
+              >
+                <option value="standard">Standard（共有SaaS）</option>
+                <option value="premium">Premium（専用サーバー分離）</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm text-aitetsu mb-1">

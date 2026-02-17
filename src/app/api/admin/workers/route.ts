@@ -48,17 +48,31 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * プレフィックス+ランダム3文字の担当者IDを生成（例: TK7M, TM2P）
+ * 紛らわしい文字（0/O, 1/I/L）を除外
+ */
+function generateWorkerId(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let suffix = '';
+  for (let i = 0; i < 3; i++) {
+    suffix += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return `T${suffix}`;
+}
+
+/**
  * 担当者新規作成（管理者API）
  * POST /api/admin/workers
- * Body: { tenant_id, worker_id, name, pin, email? }
+ * Body: { tenant_id, name, pin, email? }
+ * 担当者IDはサーバー側で自動生成（T + ランダム英数字2文字）
  */
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { tenant_id, worker_id, name, pin, email } = body;
+  const { tenant_id, name, pin, email } = body;
 
-  if (!tenant_id || !worker_id || !name || !pin) {
+  if (!tenant_id || !name || !pin) {
     return NextResponse.json(
-      { error: 'テナントID、担当者ID、担当者名、PINは必須です' },
+      { error: 'テナントID、担当者名、PINは必須です' },
       { status: 400 }
     );
   }
@@ -72,18 +86,26 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // 重複チェック
-  const { data: existing } = await supabase
-    .from('workers')
-    .select('id')
-    .eq('tenant_id', tenant_id)
-    .eq('worker_id', worker_id)
-    .single();
+  // 担当者ID自動生成（衝突時リトライ）
+  let worker_id = '';
+  for (let i = 0; i < 10; i++) {
+    const candidate = generateWorkerId();
+    const { data: existing } = await supabase
+      .from('workers')
+      .select('id')
+      .eq('tenant_id', tenant_id)
+      .eq('worker_id', candidate)
+      .single();
+    if (!existing) {
+      worker_id = candidate;
+      break;
+    }
+  }
 
-  if (existing) {
+  if (!worker_id) {
     return NextResponse.json(
-      { error: 'この担当者IDは既に使用されています' },
-      { status: 409 }
+      { error: '担当者IDの生成に失敗しました。再度お試しください' },
+      { status: 500 }
     );
   }
 

@@ -85,13 +85,13 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * テナントの redirect_url 更新（管理者API）
+ * テナントのプラン・redirect_url 更新（管理者API）
  * PUT /api/admin/tenants
- * Body: { id: string, redirect_url: string | null }
+ * Body: { id: string, plan?: 'standard' | 'premium', redirect_url?: string | null }
  */
 export async function PUT(request: NextRequest) {
   const body = await request.json();
-  const { id, redirect_url } = body;
+  const { id, plan, redirect_url } = body;
 
   if (!id) {
     return NextResponse.json(
@@ -100,24 +100,47 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  const normalizedUrl = redirect_url === '' ? null : redirect_url ?? null;
+  const updateData: Record<string, unknown> = {};
 
-  if (normalizedUrl !== null) {
-    try {
-      new URL(normalizedUrl);
-    } catch {
+  // plan
+  if (plan !== undefined) {
+    if (plan !== 'standard' && plan !== 'premium') {
       return NextResponse.json(
-        { error: '無効なURL形式です' },
+        { error: 'plan は standard または premium のみ指定できます' },
         { status: 400 }
       );
     }
+    updateData.plan = plan;
+  }
+
+  // redirect_url
+  if (redirect_url !== undefined) {
+    const normalizedUrl = redirect_url === '' ? null : redirect_url ?? null;
+    if (normalizedUrl !== null) {
+      try {
+        new URL(normalizedUrl);
+      } catch {
+        return NextResponse.json(
+          { error: '無効なURL形式です' },
+          { status: 400 }
+        );
+      }
+    }
+    updateData.redirect_url = normalizedUrl;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return NextResponse.json(
+      { error: '更新するフィールドがありません' },
+      { status: 400 }
+    );
   }
 
   const supabase = createServiceClient();
 
   const { data: tenant, error } = await supabase
     .from('tenants')
-    .update({ redirect_url: normalizedUrl })
+    .update(updateData)
     .eq('id', id)
     .select()
     .single();

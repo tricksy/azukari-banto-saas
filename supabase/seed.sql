@@ -13,8 +13,8 @@ INSERT INTO platform_admins (email, name) VALUES
 
 -- デモ着物店の担当者（PIN: 12345678 → bcryptハッシュ）
 INSERT INTO workers (tenant_id, worker_id, name, pin_hash, email) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'T01', '田中太郎', '$2a$10$placeholder_hash_for_dev', 'tanaka@demo-kimono.example.com'),
-  ('a0000000-0000-0000-0000-000000000001', 'T02', '鈴木花子', '$2a$10$placeholder_hash_for_dev', 'suzuki@demo-kimono.example.com');
+  ('a0000000-0000-0000-0000-000000000001', 'TK7M', '田中太郎', '$2a$10$placeholder_hash_for_dev', 'tanaka@demo-kimono.example.com'),
+  ('a0000000-0000-0000-0000-000000000001', 'TM2P', '鈴木花子', '$2a$10$placeholder_hash_for_dev', 'suzuki@demo-kimono.example.com');
 
 -- デモ着物店の業者
 INSERT INTO vendors (tenant_id, vendor_id, name, specialty) VALUES
