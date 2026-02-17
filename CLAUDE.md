@@ -301,6 +301,71 @@ supabase stop
 
 ---
 
+## 仕様変更時のドキュメント更新チェックリスト
+
+仕様・処理・画面を変更した場合、以下を確認して該当するドキュメントを更新すること。
+
+### 必ず確認（全変更共通）
+
+| 対象 | ファイル | 確認タイミング |
+| ---- | -------- | -------------- |
+| プロジェクト概要 | `CLAUDE.md`（Quick Reference） | ステータス・番号体系・テナントID・技術スタック変更時 |
+| API一覧 | `docs/claude/api-reference.md` | APIエンドポイント追加/削除/変更時 |
+| 環境変数テンプレート | `.env.example` | 環境変数追加/削除時 |
+
+### 変更種別ごとの更新対象
+
+#### ステータス・ビジネスロジック変更
+- [ ] `src/types/index.ts` — ステータス型・遷移マップ・ラベル定義
+- [ ] `docs/claude/status-flow.md` — ステータス遷移フロー図
+- [ ] `CLAUDE.md` Quick Reference — ステータス一覧
+- [ ] `src/app/(worker)/manual/page.tsx` — 担当者マニュアル（ステータス早見表・基本の流れ・特別なケース）
+- [ ] `src/app/admin/(dashboard)/manual/page.tsx` — 管理者マニュアル（ステータス早見表）
+- [ ] `docs/sections/features.html` — HTMLドキュメント
+
+#### DBスキーマ変更
+- [ ] `docs/claude/data-schema.md` — スキーマ定義・サンプルデータ
+- [ ] `supabase/migrations/` — マイグレーションファイル追加
+- [ ] `supabase/seed.sql` — シードデータ（必要に応じて）
+- [ ] `docs/sections/database.html` — HTMLドキュメント
+
+#### API追加/変更
+- [ ] `docs/claude/api-reference.md` — API一覧表
+- [ ] 該当する `docs/claude/features/*.md` — 機能別API表
+- [ ] 対象 `route.ts` のJSDocコメント
+
+#### 画面・機能変更
+- [ ] `docs/claude/ui/worker-screens.md` — 担当者画面仕様（担当者画面変更時）
+- [ ] `docs/claude/ui/admin-screens.md` — 管理者画面仕様（管理者画面変更時）
+- [ ] `docs/claude/features/*.md` — 該当する機能ドキュメント
+- [ ] `src/app/(worker)/manual/page.tsx` — 担当者マニュアル（メニュー・操作手順・FAQ）
+- [ ] `src/app/admin/(dashboard)/manual/page.tsx` — 管理者マニュアル（メニュー・操作手順・FAQ）
+
+#### 認証・テナント変更
+- [ ] `docs/claude/auth.md` — 認証仕様
+- [ ] `docs/claude/multi-tenant.md` — マルチテナント仕様
+
+#### インフラ・デプロイ変更
+- [ ] `docs/claude/env-deploy.md` — 環境変数・デプロイ設定
+- [ ] `docs/claude/deployment-guide.md` — デプロイ手順
+- [ ] `.env.example` — 環境変数テンプレート
+
+#### デザインシステム変更
+- [ ] `docs/claude/ui/design-system.md` — 侘寂デザインシステム
+
+### HTMLドキュメント（大規模リリース時に同期）
+
+以下はClaude用ドキュメントの変更に合わせて更新:
+- `docs/sections/overview.html`
+- `docs/sections/architecture.html`
+- `docs/sections/features.html`
+- `docs/sections/database.html`
+- `docs/sections/authentication.html`
+- `docs/sections/development.html`
+- `docs/sections/all-sections.js`（上記の統合版）
+
+---
+
 ## Reference Documentation
 
 - `/docs/index.html` - 技術ドキュメントトップ（ブラウザで閲覧）

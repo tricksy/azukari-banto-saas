@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
   if (!reception_id || !item_number || !product_type || !product_name) {
     return NextResponse.json(
-      { error: 'reception_id、item_number、product_type、product_name は必須です' },
+      { error: '受付ID、商品種別、商品名は必須です' },
       { status: 400 }
     );
   }

@@ -28,6 +28,10 @@ export function StepConfirm({
   onBack,
   isSubmitting,
 }: StepConfirmProps) {
+  const hasValidationError = items.some(
+    (item) => !item.productType || !item.productName?.trim()
+  );
+
   return (
     <div className="card">
       <div className="card-header">
@@ -107,6 +111,13 @@ export function StepConfirm({
           </div>
         </div>
 
+        {/* Validation warning */}
+        {hasValidationError && (
+          <div className="mb-4 p-3 bg-kokiake/10 border border-kokiake/30 text-kokiake text-sm">
+            商品種別と商品名が未入力の商品があります。戻って入力してください。
+          </div>
+        )}
+
         {/* Buttons */}
         <div className="flex justify-between pt-4 border-t border-usuzumi/20">
           <button
@@ -119,7 +130,7 @@ export function StepConfirm({
           <button
             className="btn-primary"
             onClick={onConfirm}
-            disabled={isSubmitting}
+            disabled={isSubmitting || hasValidationError}
           >
             {isSubmitting ? '登録中...' : '登録する'}
           </button>

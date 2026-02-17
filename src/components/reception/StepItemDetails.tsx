@@ -48,7 +48,7 @@ export function StepItemDetails({
 
   const handleChange = (field: keyof WizardItem, value: string | boolean) => {
     onUpdate({ ...item, [field]: value });
-    if (field === 'productType' && value) {
+    if ((field === 'productType' || field === 'productName') && value) {
       setError(null);
     }
   };
@@ -56,6 +56,10 @@ export function StepItemDetails({
   const handleNext = () => {
     if (!item.productType) {
       setError('商品種別を選択してください');
+      return;
+    }
+    if (!item.productName?.trim()) {
+      setError('商品名を入力してください');
       return;
     }
     setError(null);
@@ -98,12 +102,12 @@ export function StepItemDetails({
             )}
           </div>
 
-          {/* 商品名・品目 */}
+          {/* 商品名・品目（必須） */}
           <div className="w-full">
-            <label className="form-label">商品名・品目</label>
+            <label className="form-label form-label-required">商品名・品目</label>
             <input
               type="text"
-              className="form-input w-full"
+              className={`form-input w-full ${error && !item.productName?.trim() ? 'border-kokiake' : ''}`}
               placeholder="例：訪問着、名古屋帯"
               value={item.productName}
               onChange={(e) => handleChange('productName', e.target.value)}

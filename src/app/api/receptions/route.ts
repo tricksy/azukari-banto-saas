@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   for (const item of items) {
     if (!item.item_number || !item.product_type || !item.product_name) {
       return NextResponse.json(
-        { error: '各商品にitem_number、product_type、product_nameは必須です' },
+        { error: '各商品に商品種別と商品名は必須です' },
         { status: 400 }
       );
     }
