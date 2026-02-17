@@ -469,8 +469,8 @@ CREATE TRIGGER set_updated_at
 
 ```json
 [
-  { "url": "https://xxx.supabase.co/storage/...", "memo": "袖口のシミ" },
-  { "url": "https://xxx.supabase.co/storage/...", "memo": "裾のほつれ" }
+  { "url": "https://pub-xxxx.r2.dev/...", "memo": "袖口のシミ" },
+  { "url": "https://pub-xxxx.r2.dev/...", "memo": "裾のほつれ" }
 ]
 ```
 

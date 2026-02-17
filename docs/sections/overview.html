@@ -14,7 +14,7 @@
           <tr><th>項目</th><th>KURATSUGI（単体版）</th><th>SaaS版</th></tr>
           <tr><td>テナント</td><td>単一店舗</td><td>マルチテナント（複数店舗）</td></tr>
           <tr><td>データベース</td><td>Google Spreadsheet</td><td>Supabase（PostgreSQL）</td></tr>
-          <tr><td>ストレージ</td><td>Google Drive</td><td>Supabase Storage（予定）</td></tr>
+          <tr><td>ストレージ</td><td>Google Drive</td><td>Cloudflare R2</td></tr>
           <tr><td>認証</td><td>Worker PIN + Admin OAuth（2種別）</td><td>Worker PIN + Admin OAuth + Platform Admin（3種別）</td></tr>
           <tr><td>データ分離</td><td>不要（単一テナント）</td><td>RLS + tenant_id による行レベルセキュリティ</td></tr>
           <tr><td>ルーティング</td><td>単一ドメイン</td><td>サブドメイン（{slug}.kuratsugi.app）</td></tr>

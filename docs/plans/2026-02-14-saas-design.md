@@ -18,7 +18,7 @@
 | 言語 | TypeScript | 既存と同じ |
 | スタイリング | Tailwind CSS v4 | 侘寂デザインシステム移植 |
 | DB | Supabase (PostgreSQL) | RLSでテナント分離、無料枠あり |
-| ストレージ | Supabase Storage | DB統一管理、テナント分離容易 |
+| ストレージ | Cloudflare R2 | エグレス無料、S3互換API |
 | 認証 | Supabase Auth | テナント対応の認証基盤 |
 | メール | Resend | Vercelとの親和性、テンプレート管理 |
 | ホスティング | Vercel | 既存ノウハウ |
@@ -110,18 +110,17 @@ CREATE TABLE tenants (
 
 ### 構造
 ```
-supabase-storage/
-└── photos/
-    └── {tenant_id}/
-        └── {reception_id}/
-            ├── {item_id}_1.webp
-            ├── {item_id}_2.webp
-            └── ...
+r2-bucket/
+└── {tenant_id}/
+    └── {reception_id}/
+        ├── {item_id}_1.webp
+        ├── {item_id}_2.webp
+        └── ...
 ```
 
-- アップロード: クライアント → Next.js API → Supabase Storage
-- 配信: Supabase Storage の署名付きURL or CDN
-- RLS: Storage にもテナント分離ポリシー適用
+- アップロード: クライアント → Next.js API → Cloudflare R2
+- 配信: R2 公開URL
+- テナント分離: ストレージパスにtenant_idをプレフィックスとして付与
 
 ---
 
@@ -136,7 +135,7 @@ supabase-storage/
 ### 作り直すもの
 - **データアクセス層** (Google Sheets → Supabase Client)
 - **認証** (独自JWT + NextAuth → Supabase Auth)
-- **写真アップロード** (GAS + Drive → Supabase Storage)
+- **写真アップロード** (GAS + Drive → Cloudflare R2)
 - **メール送信** (GAS + Gmail → Resend)
 - **Cron処理** (テナントイテレーション追加)
 

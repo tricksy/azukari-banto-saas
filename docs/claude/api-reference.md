@@ -265,8 +265,7 @@
 
 | エンドポイント | メソッド | 説明 |
 | -------------- | -------- | ---- |
-| /api/photos/upload | POST | 写真アップロード（Supabase Storage） |
-| /api/photos/upload-temp | POST | 写真一時アップロード |
+| /api/photos/upload | POST | 写真アップロード（Cloudflare R2） |
 
 ---
 

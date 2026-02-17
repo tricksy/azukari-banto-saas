@@ -83,7 +83,7 @@
 
 - 商品1点につき2枚（表面・裏面）**両方必須**
 - 撮影方法: MediaDevices API（カメラ直接起動）
-- 保存先: **Supabase Storage**
+- 保存先: **Cloudflare R2**
 - ファイル保存先: テナント別バケット or パスプレフィックス
 - 保存先カラム: `photo_front_url`, `photo_back_url`
 
@@ -96,7 +96,7 @@
 ### 共通仕様
 
 - 形式: JPEG/PNG（Base64でAPI送信）
-- アップロード方式: Supabase Storage API
+- アップロード方式: Cloudflare R2（S3互換API）
 - テナント分離: ストレージパスに`tenant_id`を含める
 
 ---
@@ -162,8 +162,7 @@ SaaS版ではCron Jobが全テナントを対象に処理する:
 | -------------- | -------- | ---- | ---- |
 | /api/cron/alerts | GET | アラート定期実行 | TODO |
 | /api/admin/send-alerts | POST | 手動アラートメール送信 | TODO |
-| /api/photos/upload | POST | 写真アップロード（Supabase Storage） | TODO |
-| /api/photos/upload-temp | POST | 写真一時アップロード | TODO |
+| /api/photos/upload | POST | 写真アップロード（Cloudflare R2） | 実装済み |
 
 ---
 
@@ -173,6 +172,6 @@ SaaS版ではCron Jobが全テナントを対象に処理する:
 - [ ] メールテンプレート作成（TypeScript）
 - [ ] Cron Job実装（テナント別処理）
 - [ ] 手動送信API
-- [ ] 写真アップロードAPI（Supabase Storage）
+- [x] 写真アップロードAPI（Cloudflare R2）
 - [ ] カメラコンポーネント実装
 - [ ] テナント設定のアラート項目連携

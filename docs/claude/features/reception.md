@@ -83,7 +83,7 @@ Step 6: complete（完了）
 
 - 商品1点につき2枚（表面・裏面）**両方必須**
 - 撮影方法: MediaDevices API（カメラ直接起動）
-- 保存先: **Supabase Storage**
+- 保存先: **Cloudflare R2**
 - 保存先カラム: `photo_front_url`, `photo_back_url`
 
 ### 追加写真
@@ -94,8 +94,8 @@ Step 6: complete（完了）
 
 ```json
 [
-  { "url": "https://xxx.supabase.co/storage/...", "memo": "袖口のシミ" },
-  { "url": "https://xxx.supabase.co/storage/...", "memo": "裾のほつれ" }
+  { "url": "https://pub-xxxx.r2.dev/...", "memo": "袖口のシミ" },
+  { "url": "https://pub-xxxx.r2.dev/...", "memo": "裾のほつれ" }
 ]
 ```
 
@@ -197,8 +197,7 @@ Step 6: complete（完了）
 | /api/customers | GET | 顧客検索 | TODO |
 | /api/customers | POST | 顧客新規登録 | TODO |
 | /api/partners | GET | 取引先一覧 | TODO |
-| /api/photos/upload | POST | 写真アップロード（Supabase Storage） | TODO |
-| /api/photos/upload-temp | POST | 写真一時アップロード | TODO |
+| /api/photos/upload | POST | 写真アップロード（Cloudflare R2） | 実装済み |
 
 ---
 
@@ -214,7 +213,7 @@ Step 6: complete（完了）
 
 - [ ] ウィザードUIコンポーネントの実装（`src/components/reception/`）
 - [ ] 写真撮影コンポーネント（カメラ/ファイルアップロード切替）
-- [ ] 写真アップロードAPI（Supabase Storage）
+- [x] 写真アップロードAPI（Cloudflare R2）
 - [ ] 顧客検索・新規登録API
 - [ ] 取引先一覧API
 - [ ] 受付番号・預かり番号の自動採番
