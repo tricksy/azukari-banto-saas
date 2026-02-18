@@ -48,7 +48,11 @@ yarn test
           <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>Supabase Service Role Key（秘密鍵）</td><td>eyJhbGci...</td></tr>
           <tr><td><code>AUTH_SECRET</code></td><td>JWT 署名用シークレット</td><td>32文字以上のランダム文字列</td></tr>
           <tr><td><code>BASE_DOMAIN</code></td><td>ベースドメイン</td><td>kuratsugi.app</td></tr>
+          <tr><td><code>NEXT_PUBLIC_BASE_DOMAIN</code></td><td>ベースドメイン（クライアント用）</td><td>kuratsugi.app（※現在未使用、将来のクライアント側テナント解決用に予約）</td></tr>
           <tr><td><code>NODE_ENV</code></td><td>実行環境</td><td>development / production</td></tr>
+          <tr><td><code>CRON_SECRET</code></td><td>Cron Job認証用シークレット</td><td>openssl rand -base64 32 で生成</td></tr>
+          <tr><td><code>RESEND_API_KEY</code></td><td>Resend メール送信APIキー</td><td>re_xxxxxxxxx</td></tr>
+          <tr><td><code>EMAIL_FROM</code></td><td>メール送信元アドレス</td><td>noreply@kuratsugi.app</td></tr>
         </table>
 
         <h3>ローカル開発セットアップ</h3>
@@ -82,7 +86,7 @@ yarn dev
         <p>ローカル開発ではサブドメインを使用できないため、以下の方法でテナントを指定します:</p>
         <table>
           <tr><th>方法</th><th>説明</th></tr>
-          <tr><td>ヘッダー</td><td><code>x-tenant-slug: demo-kimono</code> ヘッダーを付与</td></tr>
+          <tr><td>ヘッダー</td><td><code>x-tenant-slug: A3F0</code> ヘッダーを付与</td></tr>
           <tr><td>ログインAPI</td><td>リクエストボディの <code>tenantSlug</code> フィールドで指定</td></tr>
         </table>
 
@@ -97,9 +101,9 @@ yarn dev
         <p><code>supabase/seed.sql</code> に開発用テストデータが含まれています:</p>
         <table>
           <tr><th>データ</th><th>内容</th></tr>
-          <tr><td>テナント</td><td>demo-kimono（デモ着物店）、test-gofuku（テスト呉服店）</td></tr>
+          <tr><td>テナント</td><td>A3F0（デモ着物店）、B1C2（テスト呉服店）</td></tr>
           <tr><td>プラットフォーム管理者</td><td>admin@kuratsugi.app</td></tr>
-          <tr><td>担当者</td><td>T01 田中太郎、T02 鈴木花子</td></tr>
+          <tr><td>担当者</td><td>TK7M 田中太郎、TM2P 鈴木花子</td></tr>
           <tr><td>業者</td><td>V001 着物ブレイン、V002 京都染工房</td></tr>
           <tr><td>設定</td><td>company_name、alert_days_before_due、archive_days_after_complete</td></tr>
         </table>
@@ -187,20 +191,23 @@ chore: 依存パッケージの更新
           <tr><td>SUPABASE_SERVICE_ROLE_KEY</td><td>Production / Preview</td><td>.env.local</td></tr>
           <tr><td>AUTH_SECRET</td><td>Production / Preview</td><td>.env.local</td></tr>
           <tr><td>BASE_DOMAIN</td><td>Production のみ</td><td>.env.local</td></tr>
+          <tr><td>CRON_SECRET</td><td>Production / Preview</td><td>.env.local</td></tr>
+          <tr><td>RESEND_API_KEY</td><td>Production / Preview</td><td>.env.local</td></tr>
+          <tr><td>EMAIL_FROM</td><td>Production / Preview</td><td>.env.local</td></tr>
         </table>
 
         <h3>テナント追加手順</h3>
         <pre><code>
 -- 1. テナント登録
 INSERT INTO tenants (slug, name, plan, status) VALUES
-  ('new-shop', '新しい呉服店', 'standard', 'active');
+  ('C4D5', '新しい呉服店', 'standard', 'active');
 
 -- 2. 担当者登録（PINはbcryptでハッシュ化）
 INSERT INTO workers (tenant_id, worker_id, name, pin_hash) VALUES
-  ('{tenant_uuid}', 'T01', '担当者名', '{bcrypt_hash}');
+  ('{tenant_uuid}', 'TK7M', '担当者名', '{bcrypt_hash}');
 
 -- 3. DNS設定
--- new-shop.kuratsugi.app を Vercel に向ける（ワイルドカード設定済みなら不要）
+-- C4D5.kuratsugi.app を Vercel に向ける（ワイルドカード設定済みなら不要）
 
 -- 4. 初期設定
 INSERT INTO tenant_settings (tenant_id, key, value) VALUES

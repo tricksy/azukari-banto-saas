@@ -3,7 +3,7 @@
         <p>預かり番頭 SaaS は、着物・帯の預かりから加工業者への発注、顧客への返送までを一元管理するマルチテナント型クラウドシステムです。商品単位での預かり番号管理と写真記録により、依頼漏れ・返送漏れ・品質トラブルを防止します。</p>
 
         <div class="stats">
-          <div class="stat-card"><div class="number">3</div><div class="label">ユーザー種別</div></div>
+          <div class="stat-card"><div class="number">2</div><div class="label">ユーザー種別</div></div>
           <div class="stat-card"><div class="number">12</div><div class="label">ステータス</div></div>
           <div class="stat-card"><div class="number">Multi</div><div class="label">テナント対応</div></div>
           <div class="stat-card"><div class="number">RLS</div><div class="label">データ分離</div></div>
@@ -15,10 +15,10 @@
           <tr><td>テナント</td><td>単一店舗</td><td>マルチテナント（複数店舗）</td></tr>
           <tr><td>データベース</td><td>Google Spreadsheet</td><td>Supabase（PostgreSQL）</td></tr>
           <tr><td>ストレージ</td><td>Google Drive</td><td>Cloudflare R2</td></tr>
-          <tr><td>認証</td><td>Worker PIN + Admin OAuth（2種別）</td><td>Worker PIN + Admin OAuth + Platform Admin（3種別）</td></tr>
+          <tr><td>認証</td><td>Worker PIN + Admin OAuth（2種別）</td><td>Worker PIN + Platform Admin OAuth（2種別）</td></tr>
           <tr><td>データ分離</td><td>不要（単一テナント）</td><td>RLS + tenant_id による行レベルセキュリティ</td></tr>
           <tr><td>ルーティング</td><td>単一ドメイン</td><td>サブドメイン（{slug}.kuratsugi.app）</td></tr>
-          <tr><td>メール</td><td>GAS（Gmail）</td><td>未定（Resend等を検討）</td></tr>
+          <tr><td>メール</td><td>GAS（Gmail）</td><td>Resend</td></tr>
           <tr><td>対象規模</td><td>1店舗</td><td>複数の着物店・呉服店</td></tr>
         </table>
 
@@ -37,16 +37,16 @@
           <tr><td>発注管理</td><td>加工業者への発送、加工依頼書出力</td><td>担当者</td></tr>
           <tr><td>業者からの返却受入</td><td>業者からの返却処理、品質チェック</td><td>担当者</td></tr>
           <tr><td>顧客への返送管理</td><td>顧客への返送、追跡番号管理</td><td>担当者</td></tr>
-          <tr><td>マスタ管理</td><td>取引先・業者・担当者の管理</td><td>管理者</td></tr>
-          <tr><td>操作ログ</td><td>全操作の記録・追跡</td><td>管理者</td></tr>
+          <tr><td>マスタ管理</td><td>取引先・業者・担当者の管理</td><td>プラットフォーム管理者</td></tr>
+          <tr><td>操作ログ</td><td>全操作の記録・追跡</td><td>プラットフォーム管理者</td></tr>
           <tr><td>テナント管理</td><td>店舗の登録・プラン管理・利用停止</td><td>プラットフォーム管理者</td></tr>
         </table>
 
         <h3>採番ルール</h3>
         <table>
           <tr><th>番号種別</th><th>形式</th><th>例</th><th>用途</th></tr>
-          <tr><td>受付番号（親）</td><td>{担当者ID}-{YYYYMMDDHHmm}</td><td>T01-202601181430</td><td>同一受付の商品グルーピング</td></tr>
-          <tr><td>預かり番号（子）</td><td>{担当者ID}-{YYYYMMDDHHmmss}-{連番2桁}</td><td>T01-20260118143025-01</td><td>商品1点ごとの管理</td></tr>
+          <tr><td>受付番号（親）</td><td>{担当者ID}-{YYYYMMDDHHmm}</td><td>TK7M-202601181430</td><td>同一受付の商品グルーピング</td></tr>
+          <tr><td>預かり番号（子）</td><td>{担当者ID}-{YYYYMMDDHHmmss}-{連番2桁}</td><td>TK7M-20260118143025-01</td><td>商品1点ごとの管理</td></tr>
         </table>
 
         <h3>デザインテーマ</h3>
@@ -87,6 +87,7 @@
           <tr><th>技術</th><th>用途</th></tr>
           <tr><td>jose</td><td>JWT 署名・検証（HS256）</td></tr>
           <tr><td>bcryptjs</td><td>PIN コードハッシュ化</td></tr>
+          <tr><td>google-auth-library</td><td>Google OAuth 2.0 IDトークン検証</td></tr>
           <tr><td>独自レート制限</td><td>ログイン試行制限（5回/15分）</td></tr>
         </table>
 
@@ -95,14 +96,15 @@
           <tr><th>サービス</th><th>用途</th></tr>
           <tr><td>Vercel</td><td>ホスティング・デプロイ</td></tr>
           <tr><td>Supabase Cloud</td><td>マネージド PostgreSQL</td></tr>
-          <tr><td>Vercel Cron Jobs</td><td>定期アラートチェック（予定）</td></tr>
+          <tr><td>Cloudflare R2</td><td>写真ストレージ</td></tr>
+          <tr><td>Resend</td><td>メール送信（アラート通知等）</td></tr>
+          <tr><td>Vercel Cron Jobs</td><td>定期アラートチェック・アーカイブ</td></tr>
         </table>
 
         <h3>認証方式一覧</h3>
         <table>
           <tr><th>ユーザー種別</th><th>認証方式</th><th>セッション</th><th>管理方法</th></tr>
           <tr><td>担当者（Worker）</td><td>PINコード認証（8桁）</td><td>JWT Cookie（8時間）</td><td>管理者が発行・管理</td></tr>
-          <tr><td>管理者（Admin）</td><td>メール/OAuth</td><td>JWT Cookie（8時間）</td><td>プラットフォーム管理者が設定</td></tr>
-          <tr><td>プラットフォーム管理者</td><td>メール認証</td><td>JWT Cookie</td><td>platform_admins テーブルで管理</td></tr>
+          <tr><td>プラットフォーム管理者</td><td>Google OAuth 2.0</td><td>JWT Cookie（8時間）</td><td><code>platform_admins</code> テーブルで管理</td></tr>
         </table>
       </section>
