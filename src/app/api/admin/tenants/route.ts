@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getSessionFromRequest } from '@/lib/auth';
 
 /**
  * テナント一覧取得（管理者API）
  * GET /api/admin/tenants
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const supabase = createServiceClient();
 
   const { data: tenants, error } = await supabase
@@ -29,6 +35,11 @@ export async function GET() {
  * Body: { name: string, slug: string, plan?: string }
  */
 export async function POST(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { name, slug, plan } = body;
 
@@ -90,6 +101,11 @@ export async function POST(request: NextRequest) {
  * Body: { id: string, plan?: 'standard' | 'premium', redirect_url?: string | null }
  */
 export async function PUT(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { id, plan, redirect_url } = body;
 
@@ -161,6 +177,11 @@ export async function PUT(request: NextRequest) {
  * Body: { id: string, status: 'active' | 'suspended' }
  */
 export async function PATCH(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { id, status } = body;
 

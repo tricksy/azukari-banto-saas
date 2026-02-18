@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getJSTDateString } from '@/lib/date';
+import { getSessionFromRequest } from '@/lib/auth';
 
 /**
  * ダッシュボード集計データ取得（管理者API）
  * GET /api/admin/dashboard?tenant_id=xxx
  */
 export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const supabase = createServiceClient();
   const { searchParams } = new URL(request.url);
   const tenantId = searchParams.get('tenant_id');

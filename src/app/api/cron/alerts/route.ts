@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   // CRON_SECRET による認証
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -81,7 +81,10 @@ export async function GET(request: NextRequest) {
         console.log(`[cron/alerts] ${tenant.name}: ${alertItems.length}件のアラート検出`);
 
         // テナント固有 or グローバルの Resend APIキーを使用
-        const emailOptions: { apiKey?: string; from?: string } = {};
+        const emailOptions: { apiKey?: string; from?: string; tenantId?: string; emailType?: string } = {
+          tenantId: tenant.id,
+          emailType: 'daily_alert',
+        };
         if (settingsMap.resendApiKey) {
           emailOptions.apiKey = settingsMap.resendApiKey;
         }

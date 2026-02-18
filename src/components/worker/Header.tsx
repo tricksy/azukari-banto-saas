@@ -4,14 +4,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 
-const REMEMBER_TOKEN_KEY = 'kuratsugi_remember_token';
+const REMEMBER_TOKEN_PREFIX = 'kuratsugi_remember_token_';
 
 interface HeaderProps {
   workerName?: string;
   tenantName?: string;
+  tenantSlug?: string;
 }
 
-export function WorkerHeader({ workerName, tenantName }: HeaderProps) {
+export function WorkerHeader({ workerName, tenantName, tenantSlug }: HeaderProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -43,7 +44,7 @@ export function WorkerHeader({ workerName, tenantName }: HeaderProps) {
       });
 
       if (response.ok) {
-        localStorage.removeItem(REMEMBER_TOKEN_KEY);
+        if (tenantSlug) localStorage.removeItem(`${REMEMBER_TOKEN_PREFIX}${tenantSlug}`);
         router.push('/login');
       }
     } catch (error) {

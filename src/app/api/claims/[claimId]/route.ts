@@ -112,6 +112,7 @@ export async function PATCH(
       .from('workers')
       .select('name')
       .eq('id', body.assignee_id)
+      .eq('tenant_id', session.tenantId)
       .single();
     updateData.assignee_name = assignee?.name ?? null;
   }

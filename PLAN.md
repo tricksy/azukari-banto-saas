@@ -1,82 +1,109 @@
-# 担当者画面をKURATSUGI（単体版）と完全統一
+# SaaS化修正 実装計画
 
-## Context
-
-ユーザーから「担当者の処理はSaaS版じゃない方と全く同じにしてほしい」という指示。
-受付・発注・返却・返送の4処理画面 + ダッシュボードのUI/UX/機能をKURATSUGIに合わせる。
-SaaS固有のアーキテクチャ（R2、マルチテナント、コンポーネント分割、バッチ操作）は維持する。
-
-## 変更しないもの（SaaSアーキテクチャ固有）
-
-- Blob + R2アップロード（KURATSUGIはbase64）
-- マルチテナント構造
-- コンポーネント分割（ReceptionWizard → Step*.tsx）
-- バッチ操作（複数商品同時処理）
-- BottomNav（SaaS版のみ）
-- `@/lib/auth` のセッション管理
+**作成日:** 2026-02-18
+**参照:** [REVIEW.md](REVIEW.md) / [TODO.md](TODO.md)
 
 ---
 
-## Track A: ダッシュボード強化
+## Phase 1: セキュリティ必須対応（P0）
 
-**対象ファイル:** `src/app/(worker)/dashboard/page.tsx`
+### 1-1. レート制限をSupabaseテーブルに移行
 
-### A1. 統計カードにリンク追加 + 動的色
-- Linkコンポーネントでラップ + 動的色（超過時にkokiake）
+**現状:** インメモリ`Map` → Vercelサーバーレスでリセットされる
+**方針:** Supabaseテーブル `login_attempts` を使用（追加依存なし）
 
-### A2. 期限超過セクション追加
-- SVGアイコン付きヘッダー、サムネイル + 超過日数、5件まで表示
+- マイグレーション: `login_attempts` テーブル作成（RLSなし、service_roleのみアクセス）
+- `src/lib/rate-limit.ts` を全面書き換え
+  - `checkLoginAttempt()`: Supabaseからレコード取得 → ロック判定
+  - `recordLoginFailure()`: upsertでカウント+1、MAX到達でロック
+  - `resetLoginAttempts()`: レコード削除
+- 呼び出し側（`src/app/api/auth/worker/route.ts`）のインターフェースは維持
 
-### A3. クレーム対応中セクション追加
-- アイコン付きヘッダー、サムネイル2枚 + 顧客名 + 種別
+### 1-2. APIルート3箇所のtenant_idフィルタ追加
 
-### A4. 今週のスケジュールテーブル追加
-- 業者への発送予定 / 顧客への返送予定テーブル
+**変更量:** 各1行追加
 
-### A5. 顧客未設定セクション強化
-- bg-oudo/5背景、受付番号グループ化、サムネイル表示
+| ファイル | 修正内容 |
+|---|---|
+| `src/app/api/claims/route.ts` L109-113 | `.eq('id', assignee_id)` → `.eq('id', assignee_id).eq('tenant_id', session.tenantId)` |
+| `src/app/api/claims/[claimId]/route.ts` L111-115 | 同上 |
+| `src/app/api/receptions/[receptionNumber]/customer/route.ts` L76-80 | `.eq('id', customer_id)` → `.eq('id', customer_id).eq('tenant_id', session.tenantId)` |
 
----
+### 1-3. R2画像アクセスをプロキシAPI経由に変更
 
-## Track B: 発注管理 + 業者へ発送モーダル
+**現状:** パブリックURL直接返却
+**方針:** 署名付きURL（Presigned URL）を生成
 
-**対象ファイル:** `orders/page.tsx`, `ShipToVendorModal.tsx`
+- `@aws-sdk/s3-request-presigner` を追加
+- `src/lib/r2.ts` に `getPresignedUrl(key)` を追加（有効期限15分）
+- `uploadToR2()` の戻り値をパブリックURLから内部キーに変更
+- 画像表示時にPresigned URLを生成するAPIエンドポイント新設
+- フロント側の画像表示を新APIエンドポイント経由に変更
 
-### B1. 発注管理画面
-- 説明テキスト、チェックボックス全選択、タブ別ボタンラベル、印刷ボタン、再加工マーク
+**注意:** 影響範囲が広いため、まずP0の他項目を先に対応し、これは最後に着手
 
-### B2. 業者へ発送モーダル
-- activeTab prop、タイトル分岐、説明文、再発送注記、送り状セクション区切り
+### 1-4. localStorageキーのテナント分離
 
----
+**方針:** 記憶トークンのキーにテナントslugを含める
 
-## Track C: 返却受入 + 返却受入モーダル
-
-**対象ファイル:** `returns/page.tsx`, `ReturnAcceptModal.tsx`
-
-### C1. 返却受入画面
-- 説明テキスト、業者フィルタ + テキスト検索、経過日数表示、件数表示
-
-### C2. 返却受入モーダル
-- タイトル・ラベル変更、max制約、色変更、有料預かり対応、備考削除
-
----
-
-## Track D: 返送 + 返送モーダル
-
-**対象ファイル:** `shipping/page.tsx`, `ShipToCustomerModal.tsx`
-
-### D1. 返送画面
-- 説明テキスト、チェックボックス全選択、返送登録(N)ボタン、例外・再加工ボタン、経過日数
-
-### D2. 返送モーダル
-- タイトル分岐、有料預かり背景色、ボタンラベル
+| ファイル | 修正内容 |
+|---|---|
+| `src/app/login/page.tsx` | 記憶トークン保存時にキーを `kuratsugi_remember_token_{tenantSlug}` に動的化。自動ログイン時は `LAST_TENANT_ID_KEY` から前回テナントを取得してキーを構築 |
+| `src/components/worker/Header.tsx` | ログアウト時に現在テナントの記憶トークンを削除（セッション情報からtenantSlugを取得） |
 
 ---
 
-## Track E: 受付ウィザード
+## Phase 2: 多層防御・データ整合性（P1）
 
-**対象ファイル:** `StepPhoto.tsx`, `StepItemDetails.tsx`, `StepAddMore.tsx`, `StepConfirm.tsx`, `StepComplete.tsx`, `ReceptionWizard.tsx`
+### 2-1. 管理者API全12エンドポイントに認証チェック追加
 
-### E1-E6. 各ステップのUI/ラベル統一
-- 詳細は元計画ファイル参照
+**方針:** `/api/admin/settings/route.ts` のパターンを全APIの各関数冒頭に適用
+
+```typescript
+import { getSessionFromRequest } from '@/lib/auth';
+
+// 各関数の冒頭に追加
+const session = await getSessionFromRequest(request);
+if (!session || session.role !== 'admin') {
+  return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+}
+```
+
+**対象ファイル（12個）:**
+1. `api/admin/tenants/route.ts`
+2. `api/admin/tenants/[tenantId]/settings/route.ts`
+3. `api/admin/workers/route.ts`
+4. `api/admin/partners/route.ts`
+5. `api/admin/vendors/route.ts`
+6. `api/admin/customers/route.ts`
+7. `api/admin/logs/route.ts`
+8. `api/admin/email-logs/route.ts`
+9. `api/admin/paid-storage/route.ts`
+10. `api/admin/items/route.ts`
+11. `api/admin/claims/route.ts`
+12. `api/admin/dashboard/route.ts`
+
+### 2-2. email_logs RLSポリシー修正
+
+- マイグレーション新規作成: `service_role_all` ポリシーを追加
+- `current_setting('app.tenant_id', true)` に `missing_ok` パラメータを統一
+
+### 2-3. CRON_SECRET未設定時のガード強化
+
+**対象:**
+- `src/app/api/cron/alerts/route.ts` L19
+- `src/app/api/cron/archive-items/route.ts` L25
+
+**修正:** `if (cronSecret && authHeader !== ...)` → `if (!cronSecret || authHeader !== ...)`
+
+### 2-4. メール送信ログ記録
+
+- `src/lib/email.ts` の `sendEmail()` 実行後にemail_logsテーブルへINSERT
+- tenant_id, to, subject, status, error_message, sent_at を記録
+
+---
+
+## Phase 3: 改善推奨（P2）— 今回のスコープ外
+
+REVIEW.md #10〜#15 は機能改善であり、本番デプロイのブロッカーではない。
+Phase 1-2の完了後に別途対応。

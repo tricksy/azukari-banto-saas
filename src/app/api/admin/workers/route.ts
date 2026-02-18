@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getSessionFromRequest } from '@/lib/auth';
 
 /**
  * 担当者一覧取得（管理者API）
  * GET /api/admin/workers
  */
 export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const supabase = createServiceClient();
   const { searchParams } = new URL(request.url);
   const tenantId = searchParams.get('tenant_id');
@@ -67,6 +73,11 @@ function generateWorkerId(): string {
  * 担当者IDはサーバー側で自動生成（T + ランダム英数字2文字）
  */
 export async function POST(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { tenant_id, name, pin, email } = body;
 
@@ -139,6 +150,11 @@ export async function POST(request: NextRequest) {
  * Body: { id, name, email? }
  */
 export async function PUT(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { id, name, email } = body;
 
@@ -174,6 +190,11 @@ export async function PUT(request: NextRequest) {
  * Body: { id, action: 'toggle_active' | 'reset_pin', pin? }
  */
 export async function PATCH(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { id, action, pin } = body;
 

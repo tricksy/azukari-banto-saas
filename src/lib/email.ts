@@ -5,6 +5,8 @@
  * RESEND_API_KEY 未設定時は開発モードとしてスキップ
  */
 
+import { createServiceClient } from '@/lib/supabase/server';
+
 interface SendEmailResult {
   success: boolean;
   error?: string;
@@ -22,7 +24,7 @@ export async function sendEmail(
   to: string,
   subject: string,
   html: string,
-  options?: { apiKey?: string; from?: string }
+  options?: { apiKey?: string; from?: string; tenantId?: string; emailType?: string }
 ): Promise<SendEmailResult> {
   const apiKey = options?.apiKey || process.env.RESEND_API_KEY;
   const from = options?.from || process.env.EMAIL_FROM || 'noreply@azukaribanto.com';
@@ -30,6 +32,7 @@ export async function sendEmail(
   if (!apiKey) {
     console.warn('[email] RESEND_API_KEY が未設定のため、メール送信をスキップしました');
     console.warn(`[email] 宛先: ${to}, 件名: ${subject}`);
+    await logEmailSend(options?.tenantId, options?.emailType || 'unknown', to, subject, 'skipped');
     return { success: true };
   }
 
@@ -46,15 +49,46 @@ export async function sendEmail(
     if (!response.ok) {
       const body = await response.text();
       console.error(`[email] 送信失敗: ${response.status} ${body}`);
-      return { success: false, error: `HTTP ${response.status}: ${body}` };
+      const error = `HTTP ${response.status}: ${body}`;
+      await logEmailSend(options?.tenantId, options?.emailType || 'unknown', to, subject, 'failed', error);
+      return { success: false, error };
     }
 
     console.log(`[email] 送信成功: ${to}`);
+    await logEmailSend(options?.tenantId, options?.emailType || 'unknown', to, subject, 'sent');
     return { success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[email] 送信エラー: ${message}`);
+    await logEmailSend(options?.tenantId, options?.emailType || 'unknown', to, subject, 'failed', message);
     return { success: false, error: message };
+  }
+}
+
+/**
+ * メール送信ログをDBに記録する（失敗してもエラーは無視）
+ */
+async function logEmailSend(
+  tenantId: string | undefined,
+  emailType: string,
+  toAddress: string,
+  subject: string,
+  status: string,
+  errorMessage?: string,
+): Promise<void> {
+  if (!tenantId) return;
+  try {
+    const supabase = createServiceClient();
+    await supabase.from('email_logs').insert({
+      tenant_id: tenantId,
+      email_type: emailType,
+      to_address: toAddress,
+      subject,
+      status,
+      error_message: errorMessage || null,
+    });
+  } catch (err) {
+    console.error('[email] ログ記録失敗:', err);
   }
 }
 

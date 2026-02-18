@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const REMEMBER_TOKEN_KEY = 'kuratsugi_remember_token';
+const REMEMBER_TOKEN_PREFIX = 'kuratsugi_remember_token_';
 const LAST_TENANT_ID_KEY = 'kuratsugi_last_tenant_id';
 
 type Step = 'tenant' | 'pin';
@@ -31,10 +31,10 @@ export default function WorkerLoginPage() {
   // 記憶トークンによる自動ログイン
   useEffect(() => {
     const tryAutoLogin = async () => {
-      const token = localStorage.getItem(REMEMBER_TOKEN_KEY);
+      const lastTenantId = localStorage.getItem(LAST_TENANT_ID_KEY);
+      const tokenKey = lastTenantId ? `${REMEMBER_TOKEN_PREFIX}${lastTenantId}` : null;
+      const token = tokenKey ? localStorage.getItem(tokenKey) : null;
       if (!token) {
-        // 前回のテナントIDを初期値としてセット
-        const lastTenantId = localStorage.getItem(LAST_TENANT_ID_KEY);
         if (lastTenantId) {
           setTenantId(lastTenantId);
         }
@@ -54,13 +54,11 @@ export default function WorkerLoginPage() {
           return;
         }
 
-        localStorage.removeItem(REMEMBER_TOKEN_KEY);
+        if (tokenKey) localStorage.removeItem(tokenKey);
       } catch {
-        localStorage.removeItem(REMEMBER_TOKEN_KEY);
+        if (tokenKey) localStorage.removeItem(tokenKey);
       }
 
-      // 自動ログイン失敗 → 前回のテナントIDを初期値としてセット
-      const lastTenantId = localStorage.getItem(LAST_TENANT_ID_KEY);
       if (lastTenantId) {
         setTenantId(lastTenantId);
       }
@@ -206,7 +204,7 @@ export default function WorkerLoginPage() {
       setLockExpiresIn(null);
 
       if (data.rememberToken) {
-        localStorage.setItem(REMEMBER_TOKEN_KEY, data.rememberToken);
+        localStorage.setItem(`${REMEMBER_TOKEN_PREFIX}${tenantSlug}`, data.rememberToken);
       }
 
       window.location.href = '/dashboard';

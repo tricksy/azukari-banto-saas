@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const { pin, tenantSlug } = await request.json();
 
     // レート制限チェック
-    const attemptCheck = checkLoginAttempt(clientIP);
+    const attemptCheck = await checkLoginAttempt(clientIP);
     if (attemptCheck.isLocked) {
       return NextResponse.json(
         {
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!matchedWorker) {
-      const failureResult = recordLoginFailure(clientIP);
+      const failureResult = await recordLoginFailure(clientIP);
 
       if (failureResult.isLocked) {
         return NextResponse.json(
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ログイン成功
-    resetLoginAttempts(clientIP);
+    await resetLoginAttempts(clientIP);
 
     // セッション作成（テナント情報を含む）
     await createSession({

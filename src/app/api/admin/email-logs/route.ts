@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getSessionFromRequest } from '@/lib/auth';
 
 /**
  * メール送信履歴取得（管理者API）
@@ -7,6 +8,11 @@ import { createServiceClient } from '@/lib/supabase/server';
  * Query params: tenant_id, email_type
  */
 export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const supabase = createServiceClient();
   const { searchParams } = new URL(request.url);
   const tenantId = searchParams.get('tenant_id');

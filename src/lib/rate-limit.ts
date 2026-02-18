@@ -2,94 +2,115 @@
  * レート制限（ログイン試行制限）
  *
  * 5回失敗で5分間ロック（IPアドレスベース）
+ * Supabaseテーブルに永続化（Vercelサーバーレス環境対応）
  */
 
-interface LoginAttempt {
-  count: number;
-  firstAttemptAt: number;
-  lockedUntil: number | null;
-}
-
-const loginAttempts = new Map<string, LoginAttempt>();
+import { createServiceClient } from '@/lib/supabase/server';
 
 const MAX_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 5 * 60 * 1000; // 5分
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // 15分
 
-function cleanupOldEntries(): void {
-  const now = Date.now();
-  for (const [key, attempt] of loginAttempts.entries()) {
-    if (
-      (!attempt.lockedUntil || attempt.lockedUntil < now) &&
-      now - attempt.firstAttemptAt > ATTEMPT_WINDOW_MS
-    ) {
-      loginAttempts.delete(key);
-    }
-  }
-}
-
-export function checkLoginAttempt(identifier: string): {
+export async function checkLoginAttempt(identifier: string): Promise<{
   isLocked: boolean;
   remainingAttempts: number;
   lockExpiresIn: number | null;
-} {
-  if (Math.random() < 0.1) {
-    cleanupOldEntries();
-  }
+}> {
+  const supabase = createServiceClient();
+  const now = new Date();
 
-  const now = Date.now();
-  const attempt = loginAttempts.get(identifier);
+  const { data: attempt } = await supabase
+    .from('login_attempts')
+    .select('attempt_count, first_attempt_at, locked_until')
+    .eq('identifier', identifier)
+    .single();
 
   if (!attempt) {
     return { isLocked: false, remainingAttempts: MAX_ATTEMPTS, lockExpiresIn: null };
   }
 
-  if (attempt.lockedUntil && attempt.lockedUntil > now) {
-    return {
-      isLocked: true,
-      remainingAttempts: 0,
-      lockExpiresIn: Math.ceil((attempt.lockedUntil - now) / 1000),
-    };
-  }
-
-  if (attempt.lockedUntil && attempt.lockedUntil <= now) {
-    loginAttempts.delete(identifier);
+  // ロック中の場合
+  if (attempt.locked_until) {
+    const lockedUntil = new Date(attempt.locked_until);
+    if (lockedUntil > now) {
+      return {
+        isLocked: true,
+        remainingAttempts: 0,
+        lockExpiresIn: Math.ceil((lockedUntil.getTime() - now.getTime()) / 1000),
+      };
+    }
+    // ロック期限切れ → リセット
+    await supabase.from('login_attempts').delete().eq('identifier', identifier);
     return { isLocked: false, remainingAttempts: MAX_ATTEMPTS, lockExpiresIn: null };
   }
 
-  if (now - attempt.firstAttemptAt > ATTEMPT_WINDOW_MS) {
-    loginAttempts.delete(identifier);
+  // 試行ウィンドウ超過 → リセット
+  const firstAttempt = new Date(attempt.first_attempt_at);
+  if (now.getTime() - firstAttempt.getTime() > ATTEMPT_WINDOW_MS) {
+    await supabase.from('login_attempts').delete().eq('identifier', identifier);
     return { isLocked: false, remainingAttempts: MAX_ATTEMPTS, lockExpiresIn: null };
   }
 
   return {
     isLocked: false,
-    remainingAttempts: Math.max(0, MAX_ATTEMPTS - attempt.count),
+    remainingAttempts: Math.max(0, MAX_ATTEMPTS - attempt.attempt_count),
     lockExpiresIn: null,
   };
 }
 
-export function recordLoginFailure(identifier: string): {
+export async function recordLoginFailure(identifier: string): Promise<{
   isLocked: boolean;
   remainingAttempts: number;
   lockExpiresIn: number | null;
-} {
-  const now = Date.now();
-  const attempt = loginAttempts.get(identifier);
+}> {
+  const supabase = createServiceClient();
+  const now = new Date();
+
+  const { data: attempt } = await supabase
+    .from('login_attempts')
+    .select('attempt_count, first_attempt_at')
+    .eq('identifier', identifier)
+    .single();
 
   if (!attempt) {
-    loginAttempts.set(identifier, {
-      count: 1,
-      firstAttemptAt: now,
-      lockedUntil: null,
+    // 初回失敗
+    await supabase.from('login_attempts').insert({
+      identifier,
+      attempt_count: 1,
+      first_attempt_at: now.toISOString(),
+      updated_at: now.toISOString(),
     });
     return { isLocked: false, remainingAttempts: MAX_ATTEMPTS - 1, lockExpiresIn: null };
   }
 
-  attempt.count += 1;
+  // 試行ウィンドウ超過 → リセットして1からカウント
+  const firstAttempt = new Date(attempt.first_attempt_at);
+  if (now.getTime() - firstAttempt.getTime() > ATTEMPT_WINDOW_MS) {
+    await supabase
+      .from('login_attempts')
+      .update({
+        attempt_count: 1,
+        first_attempt_at: now.toISOString(),
+        locked_until: null,
+        updated_at: now.toISOString(),
+      })
+      .eq('identifier', identifier);
+    return { isLocked: false, remainingAttempts: MAX_ATTEMPTS - 1, lockExpiresIn: null };
+  }
 
-  if (attempt.count >= MAX_ATTEMPTS) {
-    attempt.lockedUntil = now + LOCK_DURATION_MS;
+  const newCount = attempt.attempt_count + 1;
+
+  if (newCount >= MAX_ATTEMPTS) {
+    // ロック
+    const lockedUntil = new Date(now.getTime() + LOCK_DURATION_MS);
+    await supabase
+      .from('login_attempts')
+      .update({
+        attempt_count: newCount,
+        locked_until: lockedUntil.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq('identifier', identifier);
     return {
       isLocked: true,
       remainingAttempts: 0,
@@ -97,13 +118,23 @@ export function recordLoginFailure(identifier: string): {
     };
   }
 
+  // カウントアップ
+  await supabase
+    .from('login_attempts')
+    .update({
+      attempt_count: newCount,
+      updated_at: now.toISOString(),
+    })
+    .eq('identifier', identifier);
+
   return {
     isLocked: false,
-    remainingAttempts: MAX_ATTEMPTS - attempt.count,
+    remainingAttempts: MAX_ATTEMPTS - newCount,
     lockExpiresIn: null,
   };
 }
 
-export function resetLoginAttempts(identifier: string): void {
-  loginAttempts.delete(identifier);
+export async function resetLoginAttempts(identifier: string): Promise<void> {
+  const supabase = createServiceClient();
+  await supabase.from('login_attempts').delete().eq('identifier', identifier);
 }

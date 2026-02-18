@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getSessionFromRequest } from '@/lib/auth';
 
 /**
  * 取引先ID生成（P + ランダム3文字）
@@ -19,6 +20,11 @@ function generatePartnerId(): string {
  * GET /api/admin/partners
  */
 export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const supabase = createServiceClient();
   const { searchParams } = new URL(request.url);
   const tenantId = searchParams.get('tenant_id');
@@ -65,6 +71,11 @@ export async function GET(request: NextRequest) {
  * Body: { tenant_id, partner_name, partner_code?, name_kana?, contact_person?, phone?, fax?, email?, postal_code?, address?, notes? }
  */
 export async function POST(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { tenant_id, partner_name, partner_code, name_kana, contact_person, phone, fax, email, postal_code, address, notes } = body;
 
@@ -135,6 +146,11 @@ export async function POST(request: NextRequest) {
  * Body: { id, partner_name, partner_code?, name_kana?, contact_person?, phone?, fax?, email?, postal_code?, address?, notes? }
  */
 export async function PUT(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { id, partner_name, partner_code, name_kana, contact_person, phone, fax, email, postal_code, address, notes } = body;
 
@@ -181,6 +197,11 @@ export async function PUT(request: NextRequest) {
  * Body: { id, action: 'toggle_active' }
  */
 export async function PATCH(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const body = await request.json();
   const { id, action } = body;
 

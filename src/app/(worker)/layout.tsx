@@ -26,6 +26,7 @@ export default async function WorkerLayout({
       <WorkerHeader
         workerName={session?.name}
         tenantName={session?.tenantName}
+        tenantSlug={session?.tenantSlug}
       />
       <main className="pb-16">{children}</main>
       {session && <BottomNav />}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getSessionFromRequest } from '@/lib/auth';
 
 /** 保存可能な設定キー */
 const ALLOWED_KEYS = [
@@ -22,6 +23,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const { tenantId } = await params;
 
   const supabase = createServiceClient();
@@ -55,6 +61,11 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const session = await getSessionFromRequest(request);
+  if (!session || session.role !== 'admin') {
+    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 401 });
+  }
+
   const { tenantId } = await params;
 
   const body = await request.json();

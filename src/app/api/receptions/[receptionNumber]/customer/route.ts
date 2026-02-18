@@ -77,6 +77,7 @@ export async function PATCH(
     .from('customers')
     .select('name_kana')
     .eq('id', customer_id)
+    .eq('tenant_id', session.tenantId)
     .single();
 
   // 紐づく商品を一括更新: 顧客情報設定 + draft → pending_ship

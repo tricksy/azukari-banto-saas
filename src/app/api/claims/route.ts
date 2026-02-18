@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
       .from('workers')
       .select('name')
       .eq('id', assignee_id)
+      .eq('tenant_id', session.tenantId)
       .single();
     assigneeName = assignee?.name ?? null;
   }
