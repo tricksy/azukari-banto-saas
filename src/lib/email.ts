@@ -141,7 +141,7 @@ export async function sendAlertEmail(
   subject: string,
   items: AlertItem[],
   storeName: string,
-  options?: { apiKey?: string; from?: string }
+  options?: { apiKey?: string; from?: string; tenantId?: string; emailType?: string }
 ): Promise<SendEmailResult> {
   const rows = items
     .map(
