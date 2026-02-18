@@ -5,8 +5,8 @@
 
         <h3>スキーマ概要</h3>
         <div class="stats">
-          <div class="stat-card"><div class="number">12</div><div class="label">テーブル数</div></div>
-          <div class="stat-card"><div class="number">8</div><div class="label">ENUM定義</div></div>
+          <div class="stat-card"><div class="number">13</div><div class="label">テーブル数</div></div>
+          <div class="stat-card"><div class="number">9</div><div class="label">ENUM定義</div></div>
           <div class="stat-card"><div class="number">10</div><div class="label">RLSポリシー</div></div>
           <div class="stat-card"><div class="number">17</div><div class="label">インデックス</div></div>
         </div>
@@ -20,7 +20,7 @@
           <tr><td><code>claim_category</code></td><td>quality, delivery, response, other</td><td>クレーム種別</td></tr>
           <tr><td><code>claim_log_action</code></td><td>opened, updated, resolved, closed, reopened</td><td>クレーム対応ログ</td></tr>
           <tr><td><code>log_action</code></td><td>create, update, delete, status_change, login, logout</td><td>操作ログ種別</td></tr>
-          <tr><td><code>log_target_type</code></td><td>item, reception, customer, partner, vendor, worker, session</td><td>操作対象種別</td></tr>
+          <tr><td><code>log_target_type</code></td><td>item, reception, customer, partner, vendor, worker, auth, system, email</td><td>操作対象種別</td></tr>
           <tr><td><code>tenant_plan</code></td><td>free, standard, premium</td><td>テナントプラン</td></tr>
           <tr><td><code>tenant_status</code></td><td>active, suspended, cancelled</td><td>テナント状態</td></tr>
         </table>
@@ -39,6 +39,7 @@
           <tr><td>plan</td><td>tenant_plan</td><td>NOT NULL DEFAULT 'free'</td><td>契約プラン</td></tr>
           <tr><td>status</td><td>tenant_status</td><td>NOT NULL DEFAULT 'active'</td><td>テナント状態</td></tr>
           <tr><td>settings</td><td>JSONB</td><td>NOT NULL DEFAULT '{}'</td><td>テナント固有設定</td></tr>
+          <tr><td>redirect_url</td><td>TEXT</td><td></td><td>テナント分離先URL（Premiumプラン用）</td></tr>
           <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>NOT NULL DEFAULT now()</td><td>作成日時</td></tr>
           <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>NOT NULL DEFAULT now()</td><td>更新日時</td></tr>
         </table>
@@ -47,8 +48,8 @@
         <table>
           <tr><th>カラム</th><th>型</th><th>制約</th><th>説明</th></tr>
           <tr><td>id</td><td>UUID</td><td>PK</td><td>内部ID</td></tr>
-          <tr><td>tenant_id</td><td>UUID</td><td>FK → tenants(id) ON DELETE CASCADE</td><td>所属テナント</td></tr>
-          <tr><td>worker_id</td><td>VARCHAR(20)</td><td>UNIQUE(tenant_id, worker_id)</td><td>担当者ID（T01等）</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK &rarr; tenants(id) ON DELETE CASCADE</td><td>所属テナント</td></tr>
+          <tr><td>worker_id</td><td>VARCHAR(20)</td><td>UNIQUE(tenant_id, worker_id)</td><td>担当者ID（TK7M等）</td></tr>
           <tr><td>name</td><td>VARCHAR(100)</td><td>NOT NULL</td><td>担当者名</td></tr>
           <tr><td>pin_hash</td><td>VARCHAR(255)</td><td>NOT NULL</td><td>PIN bcryptハッシュ</td></tr>
           <tr><td>email</td><td>VARCHAR(255)</td><td></td><td>メールアドレス</td></tr>
@@ -63,12 +64,12 @@
         <table>
           <tr><th>カラム</th><th>型</th><th>説明</th></tr>
           <tr><td>id</td><td>UUID</td><td>内部ID（PK）</td></tr>
-          <tr><td>tenant_id</td><td>UUID</td><td>FK → tenants(id)</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK &rarr; tenants(id)</td></tr>
           <tr><td>item_number</td><td>VARCHAR(50)</td><td>預かり番号（テナント内ユニーク）</td></tr>
-          <tr><td>reception_id</td><td>UUID</td><td>FK → receptions(id)</td></tr>
+          <tr><td>reception_id</td><td>UUID</td><td>FK &rarr; receptions(id)</td></tr>
           <tr><td>customer_name</td><td>VARCHAR(255)</td><td>顧客名（非正規化）</td></tr>
           <tr><td>customer_name_kana</td><td>VARCHAR(255)</td><td>顧客名フリガナ（検索用）</td></tr>
-          <tr><td>partner_id</td><td>UUID</td><td>FK → partners(id)</td></tr>
+          <tr><td>partner_id</td><td>UUID</td><td>FK &rarr; partners(id)</td></tr>
           <tr><td>partner_name</td><td>VARCHAR(255)</td><td>取引先名（非正規化）</td></tr>
           <tr><td>product_type</td><td>VARCHAR(50)</td><td>商品種別（着物/帯/その他）</td></tr>
           <tr><td>product_name</td><td>VARCHAR(255)</td><td>商品名・品目</td></tr>
@@ -79,7 +80,7 @@
           <tr><td>request_type</td><td>VARCHAR(100)</td><td>依頼種別</td></tr>
           <tr><td>request_detail</td><td>TEXT</td><td>依頼詳細</td></tr>
           <tr><td>status</td><td>item_status</td><td>ステータス（DEFAULT 'draft'）</td></tr>
-          <tr><td>vendor_id</td><td>UUID</td><td>FK → vendors(id)</td></tr>
+          <tr><td>vendor_id</td><td>UUID</td><td>FK &rarr; vendors(id)</td></tr>
           <tr><td>vendor_name</td><td>VARCHAR(255)</td><td>業者名</td></tr>
           <tr><td>scheduled_ship_date</td><td>DATE</td><td>発送予定日（業者へ）</td></tr>
           <tr><td>scheduled_return_date</td><td>DATE</td><td>返送予定日（顧客へ）</td></tr>
@@ -113,28 +114,56 @@
         <table>
           <tr><th>カラム</th><th>型</th><th>説明</th></tr>
           <tr><td>id</td><td>UUID</td><td>内部ID（PK）</td></tr>
-          <tr><td>tenant_id</td><td>UUID</td><td>FK → tenants(id)</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK &rarr; tenants(id)</td></tr>
           <tr><td>reception_number</td><td>VARCHAR(50)</td><td>受付番号（テナント内ユニーク）</td></tr>
-          <tr><td>customer_id</td><td>UUID</td><td>FK → customers(id)</td></tr>
+          <tr><td>customer_id</td><td>UUID</td><td>FK &rarr; customers(id)</td></tr>
           <tr><td>customer_name</td><td>VARCHAR(255)</td><td>顧客名</td></tr>
-          <tr><td>partner_id</td><td>UUID</td><td>FK → partners(id)</td></tr>
+          <tr><td>partner_id</td><td>UUID</td><td>FK &rarr; partners(id)</td></tr>
           <tr><td>partner_name</td><td>VARCHAR(255)</td><td>取引先名</td></tr>
           <tr><td>received_date</td><td>DATE</td><td>受付日</td></tr>
-          <tr><td>received_by</td><td>UUID</td><td>FK → workers(id) 受付担当者</td></tr>
+          <tr><td>received_by</td><td>UUID</td><td>FK &rarr; workers(id) 受付担当者</td></tr>
           <tr><td>item_count</td><td>INTEGER</td><td>商品数</td></tr>
           <tr><td>notes</td><td>TEXT</td><td>備考</td></tr>
           <tr><td>created_at / updated_at</td><td>TIMESTAMPTZ</td><td>日時</td></tr>
         </table>
 
+        <h3>operation_logs（操作ログ）</h3>
+        <table>
+          <tr><th>カラム</th><th>型</th><th>説明</th></tr>
+          <tr><td>id</td><td>UUID</td><td>内部ID（PK）</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK &rarr; tenants(id)</td></tr>
+          <tr><td>worker_id</td><td>TEXT</td><td>担当者ID（SYSTEMの場合はnull）</td></tr>
+          <tr><td>worker_name</td><td>TEXT</td><td>担当者名</td></tr>
+          <tr><td>action</td><td>log_action</td><td>アクション種別（ENUM型）</td></tr>
+          <tr><td>target_type</td><td>log_target_type</td><td>対象種別（ENUM型）</td></tr>
+          <tr><td>target_id</td><td>TEXT</td><td>対象ID</td></tr>
+          <tr><td>changes</td><td>JSONB</td><td>変更内容（JSON形式）</td></tr>
+          <tr><td>is_archived</td><td>BOOLEAN</td><td>アーカイブ済み</td></tr>
+          <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>作成日時</td></tr>
+        </table>
+
+        <h3>email_logs（メール送信ログ）</h3>
+        <table>
+          <tr><th>カラム</th><th>型</th><th>説明</th></tr>
+          <tr><td>id</td><td>UUID</td><td>内部ID（PK）</td></tr>
+          <tr><td>tenant_id</td><td>UUID</td><td>FK &rarr; tenants(id)</td></tr>
+          <tr><td>to_email</td><td>TEXT</td><td>送信先メールアドレス</td></tr>
+          <tr><td>subject</td><td>TEXT</td><td>件名</td></tr>
+          <tr><td>body</td><td>TEXT</td><td>本文</td></tr>
+          <tr><td>status</td><td>TEXT</td><td>送信ステータス（sent / failed）</td></tr>
+          <tr><td>error</td><td>TEXT</td><td>エラーメッセージ（失敗時）</td></tr>
+          <tr><td>sent_at</td><td>TIMESTAMPTZ</td><td>送信日時</td></tr>
+          <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>作成日時</td></tr>
+        </table>
+
         <h3>その他のテーブル</h3>
         <table>
           <tr><th>テーブル</th><th>主要カラム</th><th>用途</th></tr>
-          <tr><td><code>partners</code></td><td>partner_code, name, phone, email, address</td><td>取引先マスタ</td></tr>
+          <tr><td><code>partners</code></td><td>partner_code, partner_name, phone, email, address</td><td>取引先マスタ</td></tr>
           <tr><td><code>customers</code></td><td>partner_id, name, name_kana, phone, email</td><td>顧客マスタ</td></tr>
           <tr><td><code>vendors</code></td><td>vendor_id, name, specialty</td><td>加工業者マスタ</td></tr>
-          <tr><td><code>claims</code></td><td>item_id, status, category, description</td><td>クレーム管理</td></tr>
+          <tr><td><code>claims</code></td><td>item_number, status, category, description</td><td>クレーム管理</td></tr>
           <tr><td><code>claim_logs</code></td><td>claim_id, worker_id, action, note</td><td>クレーム対応ログ</td></tr>
-          <tr><td><code>operation_logs</code></td><td>worker_id, action, target_type, target_id</td><td>操作ログ</td></tr>
           <tr><td><code>tenant_settings</code></td><td>key, value</td><td>テナント個別設定</td></tr>
           <tr><td><code>platform_admins</code></td><td>email, name</td><td>プラットフォーム管理者</td></tr>
         </table>
@@ -159,6 +188,10 @@ CREATE POLICY service_role_all ON items
   FOR ALL TO service_role USING (true);
         </code></pre>
 
+        <div class="info">
+          <strong>注意:</strong> <code>current_setting('app.tenant_id', true)</code> の第2引数 <code>true</code> は、セッション変数が未設定の場合にエラーではなくNULLを返すオプションです。これにより、セッション変数未設定時はどの行にもマッチせず安全にデータが保護されます。
+        </div>
+
         <h3>RLS 適用テーブル一覧</h3>
         <table>
           <tr><th>テーブル</th><th>tenant_isolation</th><th>service_role_all</th></tr>
@@ -171,6 +204,7 @@ CREATE POLICY service_role_all ON items
           <tr><td>claims</td><td>適用</td><td>適用</td></tr>
           <tr><td>claim_logs</td><td>適用</td><td>適用</td></tr>
           <tr><td>operation_logs</td><td>適用</td><td>適用</td></tr>
+          <tr><td>email_logs</td><td>適用</td><td>適用</td></tr>
           <tr><td>tenant_settings</td><td>適用</td><td>適用</td></tr>
           <tr><td>tenants</td><td style="color:#7B2D26;">なし（横断テーブル）</td><td>-</td></tr>
           <tr><td>platform_admins</td><td style="color:#7B2D26;">なし（横断テーブル）</td><td>-</td></tr>
@@ -181,8 +215,8 @@ CREATE POLICY service_role_all ON items
           <tr><th>場面</th><th>理由</th><th>実装箇所</th></tr>
           <tr><td>ログイン認証</td><td>セッション変数設定前にテナント・担当者を検索する必要がある</td><td><code>api/auth/worker/route.ts</code></td></tr>
           <tr><td>テナント情報取得</td><td>ログイン前にテナントの存在確認が必要</td><td><code>api/tenant/route.ts</code></td></tr>
-          <tr><td>Cron ジョブ</td><td>全テナントを横断してアラートチェック</td><td><code>api/cron/*</code>（予定）</td></tr>
-          <tr><td>プラットフォーム管理</td><td>テナント管理は横断アクセスが必要</td><td>プラットフォーム管理画面（予定）</td></tr>
+          <tr><td>Cron ジョブ</td><td>全テナントを横断してアラートチェック</td><td><code>api/cron/*</code></td></tr>
+          <tr><td>プラットフォーム管理</td><td>テナント管理は横断アクセスが必要</td><td><code>api/admin/*</code></td></tr>
         </table>
 
         <h3>インデックス一覧</h3>

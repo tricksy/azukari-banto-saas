@@ -1,18 +1,18 @@
       <section id="auth-overview">
         <h2>認証システム概要</h2>
 
-        <p>預かり番頭 SaaS は3層の認証体系を採用しています。全ての認証はテナントコンテキスト（tenant_id）を含む JWT セッションにより管理されます。</p>
+        <p>預かり番頭 SaaS は2種類の認証方式を採用しています。全ての認証はテナントコンテキスト（tenant_id）を含む JWT セッションにより管理されます。</p>
 
         <h3>認証方式比較</h3>
         <table>
-          <tr><th>項目</th><th>担当者（Worker）</th><th>管理者（Admin）</th><th>プラットフォーム管理者</th></tr>
-          <tr><td>認証方式</td><td>PINコード（8桁数字）</td><td>メール / OAuth</td><td>メール認証</td></tr>
-          <tr><td>PIN保管</td><td>bcrypt ハッシュ化</td><td>-</td><td>-</td></tr>
-          <tr><td>セッション</td><td>JWT Cookie（8時間）</td><td>JWT Cookie（8時間）</td><td>JWT Cookie</td></tr>
-          <tr><td>記憶機能</td><td>Remember Token（30日）</td><td>-</td><td>-</td></tr>
-          <tr><td>テナント範囲</td><td>所属テナントのみ</td><td>所属テナントのみ</td><td>全テナント横断</td></tr>
-          <tr><td>管理テーブル</td><td><code>workers</code></td><td><code>workers</code>（role: admin）</td><td><code>platform_admins</code></td></tr>
-          <tr><td>ログイン制限</td><td>5回失敗で5分ロック</td><td>同左</td><td>同左</td></tr>
+          <tr><th>項目</th><th>担当者（Worker）</th><th>プラットフォーム管理者</th></tr>
+          <tr><td>認証方式</td><td>PINコード（8桁数字）</td><td>Google OAuth 2.0</td></tr>
+          <tr><td>PIN保管</td><td>bcrypt ハッシュ化</td><td>-</td></tr>
+          <tr><td>セッション</td><td>JWT Cookie（8時間）</td><td>JWT Cookie（8時間）</td></tr>
+          <tr><td>記憶機能</td><td>Remember Token（30日）</td><td>-</td></tr>
+          <tr><td>テナント範囲</td><td>所属テナントのみ</td><td>全テナント横断</td></tr>
+          <tr><td>管理テーブル</td><td><code>workers</code></td><td><code>platform_admins</code></td></tr>
+          <tr><td>ログイン制限</td><td>5回失敗で5分ロック</td><td>同左</td></tr>
         </table>
 
         <h3>セキュリティ対策</h3>
@@ -67,11 +67,14 @@
       |                    payload: {                             |
       |                      workerId, name, role,               |
       |                      tenantId, tenantSlug,               |
-      |                      loginAt                             |
+      |                      tenantName, loginAt                 |
       |                    }                                     |
       |                          |                               |
       |                    [6] Remember Token 生成               |
       |                    (HMAC-SHA256 署名付き)                 |
+      |                          |                               |
+      |                    [7] ログイン記録                       |
+      |                    (通常ログインのみ記録)                  |
       |                          |                               |
       |  Set-Cookie:             |                               |
       |  kuratsugi_session=JWT   |                               |
@@ -83,11 +86,12 @@
         <h3>JWT セッションペイロード</h3>
         <pre><code>
 {
-  "workerId": "T01",
+  "workerId": "TK7M",
   "name": "田中太郎",
   "role": "worker",          // "worker" | "admin"
   "tenantId": "a0000000-...", // UUID
-  "tenantSlug": "demo-kimono",
+  "tenantSlug": "A3F0",
+  "tenantName": "デモ着物店", // 店舗名
   "loginAt": "2026-02-14T10:00:00.000Z",
   "iat": 1739523600,         // issued at
   "exp": 1739552400          // 8時間後
@@ -103,6 +107,7 @@
           <tr><td>ペイロード</td><td>workerId, name, tenantId, tenantSlug, createdAt</td></tr>
           <tr><td>用途</td><td>セッション切れ時の自動再ログイン（PIN 入力不要）</td></tr>
           <tr><td>検証</td><td>署名一致 + 有効期限チェック</td></tr>
+          <tr><td>ログイン記録</td><td>自動ログイン（Remember Token経由）は操作ログに記録しない</td></tr>
         </table>
       </section>
 
@@ -117,7 +122,7 @@
   [1] テナント slug 解決
        |
        +-- 本番: host から抽出
-       |   demo-kimono.kuratsugi.app → "demo-kimono"
+       |   demo-kimono.kuratsugi.app &rarr; "demo-kimono"
        |
        +-- 開発: x-tenant-slug ヘッダー
        |
@@ -125,17 +130,24 @@
   [2] パスチェック
        |
        +-- PUBLIC_PATHS (/login, /api/auth/*, /api/tenant)
-       |   → テナント情報のみ付与して通過
+       |   &rarr; テナント情報のみ付与して通過
        |
        +-- /api/* パス
-       |   → Cookie から JWT 検証
-       |   → 失敗: 401 JSON レスポンス
+       |   &rarr; Cookie から JWT 検証
+       |   &rarr; 失敗: 401 JSON レスポンス
        |
        +-- ページパス
-           → Cookie から JWT 検証
-           → 失敗: /login へリダイレクト
-           → 成功: ヘッダー付与して通過
+           &rarr; Cookie から JWT 検証
+           &rarr; 失敗: /login へリダイレクト
+           &rarr; 成功: ヘッダー付与して通過
         </code></pre>
+
+        <h3>テナント解決方法</h3>
+        <table>
+          <tr><th>環境</th><th>方法</th><th>説明</th></tr>
+          <tr><td>本番</td><td>ホスト名</td><td><code>{slug}.kuratsugi.app</code> からslugを抽出</td></tr>
+          <tr><td>開発</td><td><code>x-tenant-slug</code> ヘッダー</td><td>Middlewareがヘッダーからslugを取得</td></tr>
+        </table>
 
         <h3>公開パス一覧</h3>
         <table>

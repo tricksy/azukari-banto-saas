@@ -91,9 +91,9 @@
         <pre><code>
   Step 1: 顧客選択
      |
-     +-- 取引先 → 取引先一覧から選択 → 顧客選択/新規登録
+     +-- 取引先 &rarr; 取引先一覧から選択 &rarr; 顧客選択/新規登録
      |
-     +-- 個人 → 顧客選択/新規登録
+     +-- 個人 &rarr; 顧客選択/新規登録
      |
      v
   Step 2: 商品登録（複数可）
@@ -110,10 +110,10 @@
      |
      +-- 受付番号の自動生成: {担当者ID}-{YYYYMMDDHHmm}
      +-- 預かり番号の自動生成: {担当者ID}-{YYYYMMDDHHmmss}-{連番}
-     +-- ステータス: draft → pending_ship（顧客紐付け時）
+     +-- ステータス: draft &rarr; pending_ship（顧客紐付け時）
      |
      v
-  登録完了 → ダッシュボードへ
+  登録完了 &rarr; ダッシュボードへ
         </code></pre>
 
         <h3>商品種別と加工種別</h3>
@@ -155,7 +155,7 @@
        |
        v
   [3] ステータス更新
-       pending_ship → processing
+       pending_ship &rarr; processing
        +-- ship_to_vendor_date に発送日を記録
        +-- ship_history に履歴追加
        |
@@ -187,16 +187,16 @@
        |
        v
   [2] ステータス更新
-       processing → returned
+       processing &rarr; returned
        +-- return_from_vendor_date に返却日を記録
        +-- return_history に履歴追加
        |
        v
   [3] 分岐判定
-       +-- 品質OK → 顧客返送待ち
-       +-- 品質NG → rework（再加工）
-       +-- 顧客確認要 → awaiting_customer
-       +-- 有料預かり → paid_storage
+       +-- 品質OK &rarr; 顧客返送待ち
+       +-- 品質NG &rarr; rework（再加工）
+       +-- 顧客確認要 &rarr; awaiting_customer
+       +-- 有料預かり &rarr; paid_storage
         </code></pre>
 
         <h3>顧客への返送フロー</h3>
@@ -210,7 +210,7 @@
        |
        v
   [2] ステータス更新
-       returned → completed
+       returned &rarr; completed
        +-- return_to_customer_date に返送日を記録
        +-- customer_tracking_number, customer_carrier を記録
         </code></pre>
@@ -227,7 +227,7 @@
   [1] 有料預かり設定
        +-- is_paid_storage = true
        +-- paid_storage_start_date = 設定日
-       +-- status: returned → paid_storage
+       +-- status: returned &rarr; paid_storage
        |
        v
   [2] 保管期間中
@@ -236,8 +236,8 @@
        |
        v
   [3] 保管終了
-       +-- paid_storage → completed（顧客返送）
-       +-- paid_storage → returned（返却処理に戻す）
+       +-- paid_storage &rarr; completed（顧客返送）
+       +-- paid_storage &rarr; returned（返却処理に戻す）
         </code></pre>
       </section>
 
@@ -274,6 +274,26 @@
           <tr><td>closed</td><td>クレーム完了</td></tr>
           <tr><td>reopened</td><td>再オープン</td></tr>
         </table>
+
+        <h3>クレーム管理API（実装済み）</h3>
+        <table>
+          <tr><th>エンドポイント</th><th>メソッド</th><th>説明</th></tr>
+          <tr><td><code>/api/claims</code></td><td>GET / POST</td><td>クレーム一覧・新規登録</td></tr>
+          <tr><td><code>/api/claims/[claimId]</code></td><td>GET / PATCH</td><td>クレーム詳細・更新</td></tr>
+          <tr><td><code>/api/claims/[claimId]/logs</code></td><td>GET / POST</td><td>対応ログ一覧・追加</td></tr>
+        </table>
+      </section>
+
+      <section id="photo-management">
+        <h2>写真管理（実装済み）</h2>
+
+        <h3>写真アップロードAPI</h3>
+        <table>
+          <tr><th>エンドポイント</th><th>メソッド</th><th>説明</th></tr>
+          <tr><td><code>/api/photos/upload</code></td><td>POST</td><td>写真アップロード（Cloudflare R2）</td></tr>
+        </table>
+
+        <p>写真はWebP形式に変換され、Cloudflare R2にアップロードされます。ストレージパスは <code>{tenantId}/{itemNumber}/{type}_{timestamp}.webp</code> 形式です。</p>
       </section>
 
       <section id="alert-system">
@@ -302,5 +322,51 @@
           <tr><td>通常</td><td><code>normal</code></td><td>標準的な処理</td></tr>
           <tr><td>急ぎ</td><td><code>urgent</code></td><td>優先対応が必要</td></tr>
           <tr><td>特急</td><td><code>express</code></td><td>最優先での対応が必要</td></tr>
+        </table>
+      </section>
+
+      <section id="cron-jobs">
+        <h2>Cron Jobs（実装済み）</h2>
+
+        <h3>定期実行ジョブ</h3>
+        <table>
+          <tr><th>エンドポイント</th><th>スケジュール</th><th>説明</th></tr>
+          <tr><td><code>/api/cron/alerts</code></td><td>毎日 0:00 UTC（9:00 JST）</td><td>アラートメール送信（期限通知・滞留警告）</td></tr>
+          <tr><td><code>/api/cron/archive-items</code></td><td>毎週日曜 0:10 UTC</td><td>完了後一定期間経過した商品をアーカイブ</td></tr>
+        </table>
+
+        <h3>認証</h3>
+        <p>Cron Jobは <code>CRON_SECRET</code> 環境変数によるBearer Token認証、またはVercelの <code>x-vercel-cron</code> ヘッダーで認証されます。</p>
+      </section>
+
+      <section id="admin-api">
+        <h2>管理者API（実装済み）</h2>
+
+        <h3>テナント管理</h3>
+        <table>
+          <tr><th>エンドポイント</th><th>メソッド</th><th>説明</th></tr>
+          <tr><td><code>/api/admin/tenants</code></td><td>GET / POST / PUT</td><td>テナント一覧・新規作成・分離URL更新</td></tr>
+          <tr><td><code>/api/admin/tenants/[tenantId]/settings</code></td><td>GET / PATCH</td><td>テナント別設定管理</td></tr>
+        </table>
+
+        <h3>マスタ管理</h3>
+        <table>
+          <tr><th>エンドポイント</th><th>メソッド</th><th>説明</th></tr>
+          <tr><td><code>/api/admin/workers</code></td><td>GET / POST / PATCH</td><td>担当者一覧・登録・更新</td></tr>
+          <tr><td><code>/api/admin/partners</code></td><td>GET / POST / PATCH</td><td>取引先一覧・登録・更新</td></tr>
+          <tr><td><code>/api/admin/vendors</code></td><td>GET / POST / PATCH</td><td>業者一覧・登録・更新</td></tr>
+          <tr><td><code>/api/admin/customers</code></td><td>GET / POST / PATCH</td><td>顧客一覧・登録・更新</td></tr>
+        </table>
+
+        <h3>業務管理</h3>
+        <table>
+          <tr><th>エンドポイント</th><th>メソッド</th><th>説明</th></tr>
+          <tr><td><code>/api/admin/dashboard</code></td><td>GET</td><td>ダッシュボード集計データ</td></tr>
+          <tr><td><code>/api/admin/items</code></td><td>GET</td><td>商品一覧（管理者向け）</td></tr>
+          <tr><td><code>/api/admin/claims</code></td><td>GET</td><td>クレーム一覧（管理者向け）</td></tr>
+          <tr><td><code>/api/admin/paid-storage</code></td><td>GET</td><td>有料預かり一覧（管理者向け）</td></tr>
+          <tr><td><code>/api/admin/logs</code></td><td>GET</td><td>操作ログ一覧</td></tr>
+          <tr><td><code>/api/admin/email-logs</code></td><td>GET</td><td>メール送信ログ一覧</td></tr>
+          <tr><td><code>/api/admin/settings</code></td><td>GET / PATCH</td><td>テナント設定管理</td></tr>
         </table>
       </section>

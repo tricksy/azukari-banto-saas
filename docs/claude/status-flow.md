@@ -20,25 +20,59 @@
 ## ステータスフロー
 
 ```text
+=== メインフロー ===
+
 draft（顧客未設定）※写真・商品情報入力後、顧客選択前に自動保存される
     | 顧客情報を紐付け
     v
-pending_ship（業者への発送待ち）※登録時に発送予定日がデフォルト設定されるため、通常はここから開始
-    | 業者選択・発送日を登録
-    v
-processing（加工中）
-    | 業者からの返却受入（写真撮影）
-    v
-returned（業者からの返却済）
-    |
+pending_ship（業者への発送待ち）<---+
+    | 業者選択・発送日を登録        |
+    v                               |
+processing（加工中）<---------------+
+    | 業者からの返却受入（写真撮影） |
+    v                               |
+returned（業者からの返却済）        |
+    |                               |
     |---> 顧客への返送日を登録 ---> completed（完了）
+    |                                   ^
+    |---> 有料預かりに移行 -------> paid_storage（有料預かり）
+    |                                   | 顧客への返送日を登録 ---> completed
+    |                                   | 差し戻し ------------> returned
     |
-    |---> 手動で有料預かりに移行 ---> paid_storage（有料預かり）
-                                        |
-                                        +--> 顧客への返送日を登録 ---> completed（完了）
-```
+    |---> 再加工依頼 ------------> rework（再加工）
+    |                                   | 業者への再発送 -------> processing
+    |
+    |---> 例外処理（保留）-------> on_hold（顧客への返送保留）
+    |                                   | 解除 ----------------> returned
+    |                                   | 業者への再発送 -------> processing
+    |
+    +---> 例外処理（顧客確認）---> awaiting_customer（顧客確認待ち）
+                                        | 確認済み（差し戻し）--> returned
+                                        | 確認済み（完了）-----> completed
 
-※ 商品登録時に発送予定日はデフォルトで当日が設定されるため、通常は `pending_ship` で登録される。
+=== received（受付済）===
+※ 発送予定日が未設定の場合のみ使用。通常は pending_ship で登録されるため使用しない。
+
+received（受付済） → pending_ship
+pending_ship → received（差し戻し）も可能
+
+=== キャンセルフロー ===
+
+draft -------> cancelled（キャンセル）
+received ----> cancelled
+pending_ship -> cancelled
+                    | キャンセル品の顧客返送
+                    v
+                cancelled_completed（キャンセル完了）
+
+=== 例外フロー ===
+
+processing ---> on_hold（加工中からの保留）
+
+=== 最終状態（遷移不可）===
+
+completed, cancelled_completed
+```
 
 ---
 

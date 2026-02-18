@@ -8,11 +8,19 @@
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ○ | クライアント | Supabase 匿名キー（RLS適用） |
 | `SUPABASE_SERVICE_ROLE_KEY` | ○ | サーバーのみ | Supabase サービスロールキー（RLSバイパス） |
 | `AUTH_SECRET` | ○ | サーバーのみ | JWT署名用シークレット（32文字以上） |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | ○ | クライアント | Google OAuth Client ID（管理者ログイン） |
 | `BASE_DOMAIN` | ○ | サーバーのみ | ベースドメイン（例: `kuratsugi.app`） |
-| `NEXT_PUBLIC_BASE_DOMAIN` | ○ | クライアント | ベースドメイン（クライアント用） |
-| `CRON_SECRET` | 本番必須 | サーバーのみ | Cron Job認証用シークレット |
-| `NEXT_PUBLIC_BRANCH` | 推奨 | クライアント | ブランチ名（環境識別用ヘッダー色） |
-| `NEXT_PUBLIC_ADMIN_PREFIX` | 任意 | クライアント | 管理者URLプレフィックス（例: `ctrl-a3f0`）。未設定時は `admin`。クライアントバンドルにインライン化される。 |
+| `NEXT_PUBLIC_BASE_DOMAIN` | — | クライアント | ベースドメイン（クライアント用）。※現在未使用。サーバー側の `BASE_DOMAIN` のみ参照される |
+| `CRON_SECRET` | 本番必須 | サーバーのみ | Cron Job認証用シークレット（`openssl rand -base64 32` で生成） |
+| `RESEND_API_KEY` | 任意 | サーバーのみ | Resend APIキー。未設定時はメール送信をスキップ（開発モード） |
+| `EMAIL_FROM` | 任意 | サーバーのみ | 送信元メールアドレス（デフォルト: `noreply@azukaribanto.com`） |
+| `NEXT_PUBLIC_BRANCH` | 任意 | クライアント | ブランチ名（環境識別用ヘッダー色）。※未実装。将来の環境識別機能用に予約 |
+| `NEXT_PUBLIC_ADMIN_PREFIX` | 任意 | クライアント | 管理者URLプレフィックス（例: `ctrl-a3f0`）。未設定時は `admin` |
+| `R2_ACCOUNT_ID` | ○ | サーバーのみ | Cloudflare アカウントID |
+| `R2_ACCESS_KEY_ID` | ○ | サーバーのみ | R2 APIトークンの Access Key ID |
+| `R2_SECRET_ACCESS_KEY` | ○ | サーバーのみ | R2 APIトークンの Secret Access Key |
+| `R2_BUCKET_NAME` | ○ | サーバーのみ | R2 バケット名（例: `aszukari-banto-photos`） |
+| `R2_PUBLIC_URL` | ○ | サーバーのみ | R2 バケットの公開URL（例: `https://pub-xxxx.r2.dev`） |
 
 ---
 
@@ -51,8 +59,30 @@ BASE_DOMAIN=kuratsugi.app
 NEXT_PUBLIC_BASE_DOMAIN=kuratsugi.app
 ```
 
-- Middleware でサブドメインからテナントslugを抽出する際に使用
+- `BASE_DOMAIN`: Middleware でサブドメインからテナントslugを抽出する際に使用
+- `NEXT_PUBLIC_BASE_DOMAIN`: 現在未使用。将来クライアント側でドメイン参照が必要になった場合に備えて予約
 - 開発環境ではlocalhostのため、`x-tenant-slug` ヘッダーで代替
+
+### Cron認証
+
+```
+CRON_SECRET=your-cron-secret-min-32-chars
+```
+
+- Vercel Cron Jobs の認証に使用（`Authorization: Bearer {CRON_SECRET}` ヘッダーで検証）
+- 本番環境では必ず設定すること
+- 生成方法: `openssl rand -base64 32`
+
+### メール送信（Resend）
+
+```
+RESEND_API_KEY=re_xxxxxxxx
+EMAIL_FROM=noreply@azukaribanto.com
+```
+
+- `RESEND_API_KEY`: 未設定時はメール送信をスキップし、コンソールにログ出力（開発モード）
+- `EMAIL_FROM`: 送信元アドレス。未設定時のデフォルトは `noreply@azukaribanto.com`
+- テナント別Resend APIキーは `tenant_settings` テーブルで管理
 
 ### 管理者URL難読化（Admin URL Obfuscation）
 
@@ -86,7 +116,9 @@ NEXT_PUBLIC_ADMIN_PREFIX=ctrl-a3f0
 
 ## ブランチ別ヘッダー色（環境識別）
 
-開発環境と本番環境を視覚的に区別するため、gitブランチに基づいてヘッダー色を変更する機能。
+> **注意:** この機能は現在未実装です。`NEXT_PUBLIC_BRANCH` 環境変数は予約のみで、コード内で参照されていません。
+
+開発環境と本番環境を視覚的に区別するため、gitブランチに基づいてヘッダー色を変更する機能（予定）。
 
 ### 色スキーム
 

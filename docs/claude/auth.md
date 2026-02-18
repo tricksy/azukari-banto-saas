@@ -5,7 +5,7 @@
 | ユーザー種別 | 認証方式 | ライブラリ | 状態 |
 | ------------ | -------- | ---------- | ---- |
 | 担当者（Worker） | PINコード（8桁） | 独自実装（JWT署名付きCookie） | 実装済み |
-| 管理者（Admin） | Google OAuth 2.0 | google-auth-library + JWT署名付きCookie | 実装済み |
+| プラットフォーム管理者（Platform Admin） | Google OAuth 2.0 | google-auth-library + JWT署名付きCookie | 実装済み |
 
 **ログイン画面は担当者用・管理者用で完全に分離する。**
 
@@ -23,7 +23,7 @@
 
 ### 認証フロー
 
-1. テナント解決（サブドメインまたは開発モードのクエリパラメータ）
+1. テナント解決（サブドメインまたは開発モードの `x-tenant-slug` ヘッダー）
 2. PINコード入力 → `/api/auth/worker` で認証
 3. レート制限チェック（IPベース、5回失敗で5分間ロック）
 4. テナントの有効性確認（`tenants.status = 'active'`）
@@ -39,7 +39,7 @@
 - 形式: JWT（HS256署名）
 - 有効期限: 8時間
 - Cookie名: `kuratsugi_session`
-- ペイロード: workerId, name, role, tenantId, tenantSlug, loginAt
+- ペイロード: workerId, name, role, tenantId, tenantSlug, tenantName, loginAt
 - シークレット: `AUTH_SECRET` 環境変数（必須・32文字以上）
 - 検証: Middleware でJWT署名と有効期限を検証
 
@@ -51,6 +51,7 @@ export interface SessionData {
   role: 'worker' | 'admin';
   tenantId: string;     // テナントUUID
   tenantSlug: string;   // テナントslug（サブドメイン）
+  tenantName: string;   // テナント名（店舗名 or 'プラットフォーム管理'）
   loginAt: string;      // ISO 8601形式
 }
 ```
@@ -146,6 +147,7 @@ export interface RememberTokenPayload {
    - `role: 'admin'`
    - `tenantId: '00000000-0000-0000-0000-000000000000'`（プラットフォーム専用UUID）
    - `tenantSlug: '__platform__'`
+   - `tenantName: 'プラットフォーム管理'`
 
 ### セッション
 
@@ -244,8 +246,26 @@ if (!payload.workerId || !payload.name || !payload.role || !payload.tenantId) {
 
 ### ログイン履歴
 
-- 全てのログイン・自動ログインは `operation_logs` テーブルに記録
+- 通常ログイン（PINコード認証）時のみ `operation_logs` テーブルに記録
+- 自動ログイン（記憶トークン認証）は記録対象外
 - 記録内容: テナントID、担当者ID、担当者名、アクション（ログイン）、IPアドレス
+
+### PIN認証失敗時のレスポンス
+
+```json
+// 認証失敗
+{
+  "error": "PINコードが正しくありません",
+  "remainingAttempts": 3
+}
+
+// ロック時
+{
+  "error": "ログイン試行回数の上限に達しました。300秒後に再試行してください",
+  "isLocked": true,
+  "lockExpiresIn": 300
+}
+```
 
 **未認証時のレスポンス:**
 

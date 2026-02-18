@@ -69,8 +69,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | ユーザー種別 | 認証方式 | 状態 |
 | ------------ | -------- | ---- |
 | 担当者（Worker） | PINコード（8桁）+ JWT Cookie | 実装済み |
-| 店舗管理者（Store Admin） | Google OAuth 2.0 | 実装済み |
-| プラットフォーム管理者 | OAuth 2.0 | 実装済み |
+| プラットフォーム管理者（Platform Admin） | Google OAuth 2.0 | 実装済み |
 
 ### マルチテナント
 
@@ -119,6 +118,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 /
 ├── src/
 │   ├── app/
+│   │   ├── page.tsx                 # ホーム（/loginへリダイレクト）
 │   │   ├── login/page.tsx           # テナント選択 → PINログイン
 │   │   ├── (worker)/                # 担当者用画面（PIN認証）
 │   │   │   ├── layout.tsx           # ヘッダー付きレイアウト
@@ -129,7 +129,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 │   │   │   ├── returns/page.tsx     # 業者からの返却受入
 │   │   │   ├── shipping/page.tsx    # 顧客への返送
 │   │   │   ├── paid-storage/page.tsx # 有料預かり管理
-│   │   │   └── manual/page.tsx      # 使い方マニュアル
+│   │   │   ├── manual/page.tsx      # 使い方マニュアル
+│   │   │   └── print/
+│   │   │       └── processing-order/
+│   │   │           └── [receptionNumber]/page.tsx  # 加工依頼書印刷
 │   │   ├── admin/                   # 管理者用画面
 │   │   │   ├── (auth)/              # 認証グループ（サイドバーなし）
 │   │   │   │   └── login/page.tsx   # 管理者ログイン
