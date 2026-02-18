@@ -39,6 +39,7 @@ export default function AdminTenantsPage() {
   const [isSettingsSaving, setIsSettingsSaving] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [showPremiumGuide, setShowPremiumGuide] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -352,6 +353,263 @@ export default function AdminTenantsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Premiumプラン対応ガイド */}
+      <div className="card">
+        <button
+          type="button"
+          className="w-full px-6 py-4 flex items-center justify-between text-left"
+          onClick={() => setShowPremiumGuide(!showPremiumGuide)}
+        >
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 flex items-center justify-center bg-kokiake text-white rounded-full text-sm font-bold">P</span>
+            <div>
+              <h3 className="font-medium text-sumi">Premiumプラン対応ガイド</h3>
+              <p className="text-xs text-ginnezumi">テナントを専用サーバーに分離する手順</p>
+            </div>
+          </div>
+          <svg className={`w-5 h-5 text-ginnezumi transition-transform ${showPremiumGuide ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {showPremiumGuide && (
+          <div className="px-6 pb-6 space-y-6 border-t border-shironeri pt-6">
+
+            {/* 概要 */}
+            <div className="bg-kinari p-4 rounded text-sm text-sumi space-y-2">
+              <p className="font-medium">Standard と Premium の違い</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-usuzumi/20">
+                    <th className="py-2 text-left text-aitetsu font-normal w-1/4">項目</th>
+                    <th className="py-2 text-left text-aitetsu font-normal">Standard（共有SaaS）</th>
+                    <th className="py-2 text-left text-aitetsu font-normal">Premium（専用サーバー分離）</th>
+                  </tr>
+                </thead>
+                <tbody className="text-ginnezumi">
+                  <tr className="border-b border-usuzumi/10"><td className="py-2 text-sumi">Vercel</td><td>共有プロジェクト</td><td>専用プロジェクト</td></tr>
+                  <tr className="border-b border-usuzumi/10"><td className="py-2 text-sumi">Supabase</td><td>共有DB（RLSで分離）</td><td>専用Supabaseプロジェクト</td></tr>
+                  <tr className="border-b border-usuzumi/10"><td className="py-2 text-sumi">R2ストレージ</td><td>共有バケット（tenant_idプレフィックス）</td><td>専用バケット</td></tr>
+                  <tr className="border-b border-usuzumi/10"><td className="py-2 text-sumi">ドメイン</td><td>共有ドメイン</td><td>専用カスタムドメイン可</td></tr>
+                  <tr><td className="py-2 text-sumi">データ</td><td>他テナントと同一DB</td><td>完全独立（他テナントの影響なし）</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* STEP 1 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-shu text-white rounded-full font-bold text-sm flex-shrink-0">1</span>
+                <h4 className="font-medium text-sumi">Supabaseプロジェクト作成</h4>
+              </div>
+              <div className="ml-11 space-y-2 text-sm text-ginnezumi">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li><a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-shu hover:underline">supabase.com/dashboard</a> で新規プロジェクト作成</li>
+                  <li>リージョン: <code className="bg-shironeri px-1 rounded">Northeast Asia (Tokyo)</code> を選択</li>
+                  <li>Database Password を安全に保管</li>
+                  <li>プロジェクト作成完了後、<code className="bg-shironeri px-1 rounded">Project URL</code> と <code className="bg-shironeri px-1 rounded">anon key</code>、<code className="bg-shironeri px-1 rounded">service_role key</code> をメモ</li>
+                </ol>
+                <div className="bg-shironeri p-3 rounded mt-2">
+                  <p className="text-xs font-medium text-sumi mb-1">マイグレーション実行:</p>
+                  <pre className="text-xs font-mono overflow-x-auto whitespace-pre">{`# リンク先を専用プロジェクトに変更
+supabase link --project-ref <新しいproject-ref>
+
+# マイグレーション適用
+supabase db push
+
+# シードデータは不要（データ移行で対応）`}</pre>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 2 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-shu text-white rounded-full font-bold text-sm flex-shrink-0">2</span>
+                <h4 className="font-medium text-sumi">Cloudflare R2バケット作成</h4>
+              </div>
+              <div className="ml-11 space-y-2 text-sm text-ginnezumi">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Cloudflareダッシュボード → R2 → バケット作成</li>
+                  <li>バケット名: <code className="bg-shironeri px-1 rounded">azukari-banto-{"<tenant-slug>"}</code></li>
+                  <li>APIトークン作成（Object Read & Write 権限）</li>
+                  <li>パブリックアクセス設定（カスタムドメイン or r2.dev URL）</li>
+                </ol>
+                <div className="bg-shironeri p-3 rounded mt-2">
+                  <p className="text-xs font-medium text-sumi mb-1">必要な情報:</p>
+                  <pre className="text-xs font-mono overflow-x-auto whitespace-pre">{`R2_ACCOUNT_ID=<CloudflareアカウントID>
+R2_ACCESS_KEY_ID=<新しいAPIトークンのアクセスキー>
+R2_SECRET_ACCESS_KEY=<新しいAPIトークンのシークレット>
+R2_BUCKET_NAME=azukari-banto-<tenant-slug>
+R2_PUBLIC_URL=https://<カスタムドメイン or r2.dev URL>`}</pre>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 3 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-shu text-white rounded-full font-bold text-sm flex-shrink-0">3</span>
+                <h4 className="font-medium text-sumi">データ移行</h4>
+              </div>
+              <div className="ml-11 space-y-2 text-sm text-ginnezumi">
+                <p>共有DBから専用DBへテナントデータを移行する。</p>
+                <div className="bg-shironeri p-3 rounded">
+                  <p className="text-xs font-medium text-sumi mb-1">移行対象テーブル（tenant_id でフィルタ）:</p>
+                  <pre className="text-xs font-mono overflow-x-auto whitespace-pre">{`-- 1. テナント本体
+INSERT INTO tenants SELECT * FROM shared_db.tenants WHERE id = '<tenant-uuid>';
+
+-- 2. マスタデータ
+INSERT INTO workers SELECT * FROM shared_db.workers WHERE tenant_id = '<tenant-uuid>';
+INSERT INTO vendors SELECT * FROM shared_db.vendors WHERE tenant_id = '<tenant-uuid>';
+INSERT INTO customers SELECT * FROM shared_db.customers WHERE tenant_id = '<tenant-uuid>';
+INSERT INTO partners SELECT * FROM shared_db.partners WHERE tenant_id = '<tenant-uuid>';
+
+-- 3. トランザクションデータ
+INSERT INTO receptions SELECT * FROM shared_db.receptions WHERE tenant_id = '<tenant-uuid>';
+INSERT INTO items SELECT * FROM shared_db.items WHERE tenant_id = '<tenant-uuid>';
+INSERT INTO status_logs SELECT * FROM shared_db.status_logs WHERE tenant_id = '<tenant-uuid>';
+INSERT INTO claims SELECT * FROM shared_db.claims WHERE tenant_id = '<tenant-uuid>';
+INSERT INTO claim_logs SELECT * FROM shared_db.claim_logs WHERE tenant_id = '<tenant-uuid>';
+
+-- 4. 設定データ
+INSERT INTO tenant_settings SELECT * FROM shared_db.tenant_settings WHERE tenant_id = '<tenant-uuid>';
+
+-- 5. 写真データはR2間でコピー
+-- rclone や wrangler r2 object get/put で移行`}</pre>
+                </div>
+                <div className="bg-kokiake/5 border border-kokiake/20 p-3 rounded mt-2">
+                  <p className="text-xs text-kokiake font-medium">注意: 移行作業中はテナントを「停止中」にして、担当者のアクセスを遮断すること。</p>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 4 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-shu text-white rounded-full font-bold text-sm flex-shrink-0">4</span>
+                <h4 className="font-medium text-sumi">Vercelプロジェクト作成・デプロイ</h4>
+              </div>
+              <div className="ml-11 space-y-2 text-sm text-ginnezumi">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li><a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="text-shu hover:underline">vercel.com/new</a> で同じGitリポジトリからImport</li>
+                  <li>プロジェクト名: <code className="bg-shironeri px-1 rounded">azukari-banto-{"<tenant-slug>"}</code></li>
+                  <li>Framework: Next.js（自動検出）</li>
+                  <li>環境変数を設定（下記参照）</li>
+                  <li>デプロイ実行</li>
+                </ol>
+                <div className="bg-shironeri p-3 rounded mt-2">
+                  <p className="text-xs font-medium text-sumi mb-1">環境変数一覧:</p>
+                  <pre className="text-xs font-mono overflow-x-auto whitespace-pre">{`# Supabase（専用プロジェクト）
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<専用anon key>
+SUPABASE_SERVICE_ROLE_KEY=<専用service_role key>
+
+# Cloudflare R2（専用バケット）
+R2_ACCOUNT_ID=<CloudflareアカウントID>
+R2_ACCESS_KEY_ID=<専用アクセスキー>
+R2_SECRET_ACCESS_KEY=<専用シークレット>
+R2_BUCKET_NAME=azukari-banto-<tenant-slug>
+R2_PUBLIC_URL=https://<専用R2パブリックURL>
+
+# 認証
+JWT_SECRET=<新しいランダムシークレット>
+NEXT_PUBLIC_ADMIN_PREFIX=<新しい管理者URLプレフィックス>
+
+# Google OAuth（管理者ログイン）
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<同じ or 新しいClient ID>
+GOOGLE_CLIENT_SECRET=<同じ or 新しいClient Secret>
+
+# メール（テナント個別設定で管理するため不要な場合あり）
+# RESEND_API_KEY はtenant_settingsテーブルで管理`}</pre>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 5 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-shu text-white rounded-full font-bold text-sm flex-shrink-0">5</span>
+                <h4 className="font-medium text-sumi">ドメイン設定</h4>
+              </div>
+              <div className="ml-11 space-y-2 text-sm text-ginnezumi">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Vercelプロジェクト → Settings → Domains</li>
+                  <li>カスタムドメインを追加（例: <code className="bg-shironeri px-1 rounded">kimono.example.com</code>）</li>
+                  <li>DNSレコード設定: <code className="bg-shironeri px-1 rounded">CNAME → cname.vercel-dns.com</code></li>
+                  <li>SSL証明書は自動発行（Let&apos;s Encrypt）</li>
+                </ol>
+                <p className="mt-2">カスタムドメインが不要な場合はVercelの自動ドメイン（<code className="bg-shironeri px-1 rounded">azukari-banto-{"<slug>"}.vercel.app</code>）をそのまま使用。</p>
+              </div>
+            </div>
+
+            {/* STEP 6 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-shu text-white rounded-full font-bold text-sm flex-shrink-0">6</span>
+                <h4 className="font-medium text-sumi">共有プラットフォーム側の設定</h4>
+              </div>
+              <div className="ml-11 space-y-2 text-sm text-ginnezumi">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>上記テナント一覧でテナントの「編集」を開く</li>
+                  <li>プランを <code className="bg-shironeri px-1 rounded">Premium</code> に変更</li>
+                  <li>分離先URLに専用デプロイのURLを入力（例: <code className="bg-shironeri px-1 rounded">https://kimono.example.com</code>）</li>
+                  <li>保存</li>
+                </ol>
+                <div className="bg-oudo/5 border border-oudo/20 p-3 rounded mt-2">
+                  <p className="text-xs text-oudo font-medium">設定後の動作: 担当者が共有SaaSでこのテナントIDを入力すると、自動的に専用サーバーにリダイレクトされます。</p>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 7 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-shu text-white rounded-full font-bold text-sm flex-shrink-0">7</span>
+                <h4 className="font-medium text-sumi">動作確認</h4>
+              </div>
+              <div className="ml-11 space-y-2 text-sm text-ginnezumi">
+                <div className="space-y-1">
+                  <p className="text-sumi font-medium text-xs">チェックリスト:</p>
+                  <ul className="space-y-1">
+                    <li className="flex items-start gap-2"><span className="text-sumi">&#9744;</span> 専用URLで担当者ログインできる</li>
+                    <li className="flex items-start gap-2"><span className="text-sumi">&#9744;</span> 移行データ（商品・顧客・業者）が正しく表示される</li>
+                    <li className="flex items-start gap-2"><span className="text-sumi">&#9744;</span> 写真が正しく表示される（R2パブリックURL）</li>
+                    <li className="flex items-start gap-2"><span className="text-sumi">&#9744;</span> 新規受付登録 → 写真アップロードが動作する</li>
+                    <li className="flex items-start gap-2"><span className="text-sumi">&#9744;</span> 管理者ログイン（Google OAuth）が動作する</li>
+                    <li className="flex items-start gap-2"><span className="text-sumi">&#9744;</span> 共有SaaS側でテナントID入力 → リダイレクトされる</li>
+                    <li className="flex items-start gap-2"><span className="text-sumi">&#9744;</span> アラートメール送信が動作する（設定済みの場合）</li>
+                  </ul>
+                </div>
+                <div className="bg-oitake/5 border border-oitake/20 p-3 rounded mt-2">
+                  <p className="text-xs text-oitake font-medium">全項目確認後、テナントのステータスを「有効」に戻して運用開始。</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Standardへの切り戻し */}
+            <div className="border-t border-usuzumi/20 pt-6 space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 flex items-center justify-center bg-ginnezumi text-white rounded-full text-sm flex-shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                </span>
+                <h4 className="font-medium text-sumi">Standardへの切り戻し</h4>
+              </div>
+              <div className="ml-11 text-sm text-ginnezumi space-y-2">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>専用DBのデータを共有DBに再移行</li>
+                  <li>R2写真を共有バケットにコピー</li>
+                  <li>テナント編集 → プランを <code className="bg-shironeri px-1 rounded">Standard</code> に変更</li>
+                  <li>分離先URLをクリア</li>
+                  <li>専用Vercelプロジェクト・Supabaseプロジェクトを削除</li>
+                </ol>
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
 
       <Modal
